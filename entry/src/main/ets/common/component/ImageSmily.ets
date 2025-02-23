@@ -1,6 +1,7 @@
 import { CacheStrategy, ImageKnife } from '@ohos/imageknife'
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage'
 import { FontSizeEnum } from '../fontSize/FontSizeEnum'
+import { waitFor } from '../AwaitUtil'
 
 const localSmilyCache: Map<string, PixelMap | string> = new Map()
 
@@ -22,7 +23,9 @@ export struct ImageSmily {
     const memoryCache = localSmilyCache.get(this.src)
     if (memoryCache != undefined) {
       let source = memoryCache
-      setTimeout(() => this.imageData = source) // 如果不延迟设置imageData，会导致布局错误、显示不全
+      await waitFor(0)
+      this.imageData = source
+      // 如果不延迟设置imageData，会导致布局错误、显示不全
     } else {
       await imageKnife.preLoadCache(this.src)
       const fileCache = await imageKnife.getCacheImage(this.src, CacheStrategy.File)

@@ -1,6 +1,6 @@
 import { PreferenceState, SideBarLayout } from '../../pages/NavProvider/NavigationPage'
 import { AppThemeColor } from '../theme/basic/basic'
-import { CopyText } from '../ShareKit'
+import { CopyText } from '../../ArkUIX/Utils/ShareKit'
 import { HeavyClickEffect } from '../Animation'
 import { FontSizeEnum } from '../fontSize/FontSizeEnum'
 

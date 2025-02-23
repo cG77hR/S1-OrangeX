@@ -1,11 +1,11 @@
-import { preferences } from '@kit.ArkData';
+import data_preferences from '@ohos.data.preferences';
 import { ApplicationConfig } from './v1/default';
 
 /**
  * Proxy包装@kit.ArkData.preferences来简化使用
  */
 export class PreferencesWrapper implements ProxyHandler<ApplicationConfig> {
-  private preferences?: preferences.Preferences
+  private preferences?: data_preferences.Preferences
   private config: ApplicationConfig = new ApplicationConfig()
   private proxy?: ApplicationConfig
   private dirty: Set<string> = new Set()
@@ -20,7 +20,7 @@ export class PreferencesWrapper implements ProxyHandler<ApplicationConfig> {
   }
 
   async init(context: Context) {
-    const pref = await preferences.getPreferences(context, { name: 'UserPreference' })
+    const pref = await data_preferences.getPreferences(context, { name: 'UserPreference' })
     this.preferences = pref
     const currentVersion = await this.preferences.get('version', '')
     const targetVersion = '1'
@@ -31,14 +31,13 @@ export class PreferencesWrapper implements ProxyHandler<ApplicationConfig> {
       let storedConfig = await this.preferences.getAll() as ApplicationConfig
       Object.keys(storedConfig).forEach(k => Reflect.set(this.config, k, Reflect.get(storedConfig, k)))
     }
-
     this.proxy = new Proxy(this.config, this)
     this.initialized = true
     this.resolveInit?.()
     return this
   }
 
-  get(target: ApplicationConfig, k: string): preferences.ValueType {
+  get(target: ApplicationConfig, k: string): data_preferences.ValueType {
     const value = Reflect.get(this.config, k) as object
     if (value instanceof Object) {
       this.dirty.add(k)
@@ -46,7 +45,7 @@ export class PreferencesWrapper implements ProxyHandler<ApplicationConfig> {
     return value
   }
 
-  set(target: ApplicationConfig, k: string, newValue: preferences.ValueType): boolean {
+  set(target: ApplicationConfig, k: string, newValue: data_preferences.ValueType): boolean {
     const result = Reflect.set(this.config, k, newValue)
     this.dirty.add(k)
     return result
@@ -72,7 +71,7 @@ export class PreferencesWrapper implements ProxyHandler<ApplicationConfig> {
   /**
    * 只读访问配置项：不应在回调中修改ApplicationConfig，会导致配置项与存储的状态不同步
    */
-  async readonly (reader: (conf: ApplicationConfig) => void) {
+  async read (reader: (conf: ApplicationConfig) => void) {
     if (!this.initialized) {
       await this.initPromise
     }

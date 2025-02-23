@@ -2,7 +2,7 @@ import { AppThemeColor } from '../../common/theme/basic/basic'
 import { PageNameEnum } from '../PageNameEnum'
 import { openOrJumpTo } from '../SingletonPage'
 import { common } from '@kit.AbilityKit'
-import { LengthUnit, promptAction, window } from '@kit.ArkUI'
+import { LengthUnit, window } from '@kit.ArkUI'
 import { TitleBar } from '../../common/component/TitleBar'
 import request from '../../api/request'
 import { URL } from '../../api/base'
@@ -25,6 +25,9 @@ import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { PropKey, SafeArea } from '../../common/Constants'
 import { PostSignature } from '../../common/PostSignature'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
+import { BridgeFunction, getBridgeInstance } from '../../ArkUIX/BridgeFunction'
 
 export enum WriteReplyMode {
   NEW_THREAD,
@@ -143,19 +146,21 @@ export struct WriteReply {
   }
 
   aboutToAppear(): void {
-    window.getLastWindow(getContext(this)).then(currentWindow => {
-      currentWindow.on('keyboardHeightChange', (data: number) => {
-        if (data != 0) {
-          this.keyboardHeight = px2vp(data)
-        }
+    if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+      window.getLastWindow(getContext(this)).then(currentWindow => {
+        currentWindow.on('keyboardHeightChange', (data: number) => {
+          if (data != 0) {
+            this.keyboardHeight = px2vp(data)
+          }
+        })
+        currentWindow.on('avoidAreaChange', data => {
+          if (data.type !== window.AvoidAreaType.TYPE_KEYBOARD) {
+            return
+          }
+          this.keyboardAvoidHeight = px2vp(data.area.bottomRect.height)
+        })
       })
-      currentWindow.on('avoidAreaChange', data => {
-        if (data.type !== window.AvoidAreaType.TYPE_KEYBOARD) {
-          return
-        }
-        this.keyboardAvoidHeight = px2vp(data.area.bottomRect.height)
-      })
-    })
+    }
   }
 
   aboutToDisappear(): void {
@@ -163,14 +168,14 @@ export struct WriteReply {
       if (!this.fieldToInput.equalsTo(this.initialFieldToInput)) {
         if (this.fieldToInput.equalsTo(new FieldToInput())) {
           RemoveDraftIfExist(this.pageParam)
-          this.getUIContext().getPromptAction().showToast({
+          ShowToast({
             message: '已清除对应的草稿'
           })
         } else {
           RecordDraft(this.pageParam, this.fieldToInput.content, this.pageParam.subjectToReply,
             this.fieldToInput.subject,
             this.fieldToInput.threadTypeIndex)
-          this.getUIContext().getPromptAction().showToast({
+          ShowToast({
             message: '未发表内容已保存至草稿'
           })
         }
@@ -219,7 +224,11 @@ export struct WriteReply {
     .onClick(e => {
       this.toolPanelController.changeIndex(index, this.showTools ? true : false)
       this.showTools = true
-      this.getUIContext().getFocusController().clearFocus()
+      if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+        this.getUIContext().getFocusController().clearFocus()
+      } else {
+        getBridgeInstance().callMethod(BridgeFunction.hideSoftKeyboard)
+      }
     })
   }
 
@@ -349,13 +358,13 @@ export struct WriteReply {
               return
             }
             if (Date.now() - REPLY_MIN_INTERVAL < this.lastRequestReply) {
-              this.getUIContext().getPromptAction().showToast({
+              ShowToast({
                 message: '发送间隔过短，请稍后再试'
               })
               return
             }
             if (this.fieldToInput.content.length == 0) {
-              this.getUIContext().getPromptAction().showToast({
+              ShowToast({
                 message: '内容不应为空'
               })
               return
@@ -445,7 +454,7 @@ export struct WriteReply {
               .backgroundColor('#00000000')
               .padding(0)
               .borderRadius(0)
-              .onFocus(() => {
+              .onClick(() => {
                 this.showTools = false
                 this.toolPanelController.changeIndex(0)
               })
@@ -594,7 +603,7 @@ export struct WriteReply {
       const draftData = await QueryDraftItem(pageParam)
       if (draftData) {
         pageParam.draft = draftData
-        this.getUIContext().getPromptAction().showToast({
+        ShowToast({
           message: '已还原未发表的内容'
         })
       }
@@ -626,7 +635,7 @@ export struct WriteReply {
   }
 
   replySucceed(msg: string = '已发表回帖') {
-    this.getUIContext().getPromptAction().showToast({
+    ShowToast({
       message: msg
     })
     this.popData.replied = true
@@ -635,13 +644,13 @@ export struct WriteReply {
   }
 
   replyError(msg: string = '回帖时出现异常') {
-    this.getUIContext().getPromptAction().showToast({
+    ShowToast({
       message: msg
     })
   }
 
   criticalError() {
-    this.getUIContext().getPromptAction().showToast({
+    ShowToast({
       message: '当前未登录 / 获取用户信息出现异常，请稍后重试',
       duration: 5000
     })
@@ -924,7 +933,7 @@ class NewPost implements WriteHandler {
     replyError: (msg?: string) => void) {
     const data = this.getSendingData(pageParam, input)
     if (!data) {
-      promptAction.showToast({
+      ShowToast({
         message: '回帖组件未完成加载，请稍候'
       })
       return

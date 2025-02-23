@@ -38,7 +38,7 @@ export struct HiddenPostPref {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.hiddenPostDisplaySelected.push(conf.hidden_post_display)
     })
   }

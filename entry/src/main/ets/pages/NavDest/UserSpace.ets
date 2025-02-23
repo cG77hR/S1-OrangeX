@@ -19,7 +19,7 @@ import { PropKey } from '../../common/Constants'
 import { BLOCK_USER_LIST_STATE, BlockUser, UnblockUser } from '../../common/dataStore/BlockUser'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { AppThemeColor } from '../../common/theme/basic/basic'
-import { openS1LinkLike } from '../../common/WantUitl'
+import { openS1LinkLike } from '../../ArkUIX/Utils/WantUitl'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { PageNameEnum } from '../PageNameEnum'
 import { openOrJumpTo } from '../SingletonPage'
@@ -28,6 +28,7 @@ import { openSearchPage, SearchPageParam, SearchType } from './SearchPage'
 import { openUserThread, UserThreadParam } from './UserThread'
 import { openWriteReply, WriteReplyMode, WriteReplyParam } from './WriteReply'
 import { common } from '@kit.AbilityKit'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export interface UserSpaceParam {
   uid: string,
@@ -91,7 +92,7 @@ export struct UserSpace {
           } else {
             BlockUser(this.pageParam.uid, this.pageParam.username)
           }
-          this.getUIContext().getPromptAction().showToast({
+          ShowToast({
             message: '操作完成'
           })
           this.popBack()
@@ -299,7 +300,8 @@ export struct UserSpace {
                           fontSizeOverride: this.appState.fontSizeOverride,
                           copyOption: CopyOptions.LocalDevice,
                           onLinkClick: (href: string): void => {
-                            openS1LinkLike(href, this.pathStack, this.getUIContext().getHostContext() as common.UIAbilityContext)
+                            openS1LinkLike(href, this.pathStack,
+                              this.getUIContext().getHostContext() as common.UIAbilityContext)
                           },
                           onImgClick: (url: string, index: number): void => {
 

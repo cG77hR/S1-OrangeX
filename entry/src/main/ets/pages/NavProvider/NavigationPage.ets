@@ -21,16 +21,18 @@ import { ThemeArray } from '../../common/theme/ThemeEnum'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { themeColorDark } from '../../common/theme/basic/dark'
 import { ThemeColorLight } from '../../common/theme/basic/light'
-import { SetStatusBarColor } from '../../common/theme/SetStatusBarColor'
-import { openS1LinkLike } from '../../common/WantUitl'
+import { SetStatusBarColor } from '../../ArkUIX/Utils/SetStatusBarColor'
+import { openS1LinkLike } from '../../ArkUIX/Utils/WantUitl'
 import { defaultApplicationConfig, FontSizeIndex, FontSizeOverride, HiddenPostDisplay } from '../../config/v1/default'
 import { PropKey, SafeArea } from '../../common/Constants'
 import { openSplitModeShortcut } from '../NavDest/SplitModeShortcut'
-import { PageNameEnum } from '../PageNameEnum'
+import { buildNavDestPage, PageNameEnum } from '../PageNameEnum'
 import { GotoThreadDialog } from '../../common/component/GotoThreadDialog'
 import { openUserGuide } from '../NavDest/UserGuide'
-import { promptAction } from '@kit.ArkUI'
 import { PostSignature } from '../../common/PostSignature'
+import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { SetNightMode } from '../../ArkUIX/Utils/SetNightMode'
 
 enum NavigationProvider {
   ForumGroupView = 'ForumGroupView',
@@ -97,6 +99,10 @@ struct NavigationPage {
     SetStatusBarColor(this.context, this.appTheme)
   }
 
+  onPageShow(): void {
+    SetStatusBarColor(this.context, this.appTheme)
+  }
+
   onColorModeChange() {
     if (this.currentMode == ConfigurationConstant.ColorMode.COLOR_MODE_DARK) {
       this.appTheme = themeColorDark
@@ -106,7 +112,7 @@ struct NavigationPage {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.appThemeWhenLightMode = ThemeArray[conf.theme]
       this.appState.textCopyable = conf.post_copyable
       this.appState.postAlphabetIndexer = conf.post_alphabet_indexer
@@ -116,24 +122,20 @@ struct NavigationPage {
       this.appState.hiddenPostDisplay = conf.hidden_post_display
       this.appState.splitMode = conf.split_mode
       PostSignature.init(conf.post_signature, this.context.resourceManager.getStringSync($r('app.string.app_name').id))
-      if (conf.dark_mode_follow_system) {
-        this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET)
-      } else {
-        this.context.getApplicationContext().setColorMode(conf.light_dark_mode_prefer)
-      }
+      SetNightMode(conf, this.context.getApplicationContext())
       if (conf.first_run) {
         PreferenceManager.modify(conf => {
           conf.first_run = false
           openUserGuide(this.pathStack)
-          promptAction.showToast({
+          ShowToast({
             message: '初次启动，为您打开使用手册',
             duration: 3000
           })
         })
       }
       this.onColorModeChange()
-      ImageKnife.getInstance()
-        .initFileCache(this.context, 65536, ImageCacheSize[conf.image_cache_size] * 1024 * 1024)
+      const knife = ImageKnife.getInstance()
+      knife.initFileCache(this.context, 65536, ImageCacheSize[conf.image_cache_size] * 1024 * 1024)
         .then((): void => removeExpiredAvatar())
     })
     this.context.eventHub.on(Event.OpenLoginDialog, () => {
@@ -147,7 +149,7 @@ struct NavigationPage {
       this.pathStack.clear()
     })
     this.context.eventHub.on(Event.LightModeThemeSwitched, () => {
-      PreferenceManager.readonly(conf => {
+      PreferenceManager.read(conf => {
         this.appThemeWhenLightMode = ThemeArray[conf.theme]
         this.onColorModeChange()
       })
@@ -174,6 +176,7 @@ struct NavigationPage {
             this.pathStack.removeByName(PageNameEnum.SplitModeShortcut)
           }
         })
+        .navDestination(buildNavDestPage)
         .backgroundColor(this.appTheme.backgroundSecondary)
         .titleMode(NavigationTitleMode.Mini)
         .hideTitleBar(true)

@@ -5,9 +5,7 @@
     "description": "$string:module_desc",
     "mainElement": "EntryAbility",
     "deviceTypes": [
-      "phone",
-      "tablet",
-      "2in1"
+      "phone"
     ],
     "deliveryWithInstall": true,
     "installationFree": false,
@@ -17,7 +15,7 @@
         "name": "EntryAbility",
         "srcEntry": "./ets/entryAbility/EntryAbility.ets",
         "description": "$string:EntryAbility_desc",
-        "icon": "$media:app_icon_layered_image",
+        "icon": "$media:layered_image",
         "label": "$string:app_name",
         "startWindowIcon": "$media:startIcon",
         "startWindowBackground": "$color:start_window_background",
@@ -32,44 +30,10 @@
             "actions": [
               "action.system.home"
             ]
-          },
-          {
-            "entities": [
-              "ohos.want.action.viewData"
-            ],
-            "actions": [
-              'entity.system.browsable'
-            ],
-            "uris": [
-              {
-                "scheme": 'https',
-                "host": 'bbs.saraba1st.com',
-                "pathRegex": '.*mod=redirect.*'
-              },
-              {
-                "scheme": 'https',
-                "host": 'bbs.saraba1st.com',
-                "pathRegex": '.*mod=space&uid=.*'
-              },
-              {
-                "scheme": 'https',
-                "host": 'bbs.saraba1st.com',
-                "pathRegex": '.*space-uid-.*'
-              },
-              {
-                "scheme": 'https',
-                "host": 'bbs.saraba1st.com',
-                "pathRegex": '.*thread-.*'
-              },
-              {
-                "scheme": 'https',
-                "host": 'bbs.saraba1st.com',
-                "pathRegex": '.*tid=.*'
-              }
-            ]
           }
         ]
-      }],
+      }
+    ],
     "requestPermissions": [
       {
         "name": "ohos.permission.INTERNET",
@@ -79,7 +43,6 @@
           ]
         }
       }
-    ],
-    "routerMap": "$profile:route_map"
+    ]
   }
 }

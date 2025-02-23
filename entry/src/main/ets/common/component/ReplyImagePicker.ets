@@ -3,7 +3,6 @@ import request from '../../api/request';
 import { Spring035s } from '../Animation';
 import { AppThemeColor } from '../theme/basic/basic';
 import { BottomSafeArea } from './BottomSafeArea';
-import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { rcp } from '@kit.RemoteCommunicationKit';
 import { common } from '@kit.AbilityKit';
@@ -15,6 +14,9 @@ import { PreferenceManager } from '../../config/UserConfig';
 import { ArrayDataSource } from '../BasicDataSource';
 import { RipImageItem, RipImageUpload } from '../../api/model/ripImage/sda1';
 import { WriteHandler, WriteReplyMode } from '../../pages/NavDest/WriteReply';
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast';
+import { PhotoViewPicker } from '../../ArkUIX/Utils/PhotoViewPicker';
+import { MultipartForm } from '../../ArkUIX/Rcp/Rcp';
 
 const IMG_THUMBNAIL_HEIGHT = 150
 
@@ -56,7 +58,10 @@ export struct ReplyImagePicker {
     if (uris.length == 0) {
       return
     }
-    this.getUIContext().getPromptAction().showToast({
+    for (const u of uris) {
+      console.warn('uris: ', u)
+    }
+    ShowToast({
       message: `正在上传，共${uris.length}张图片`
     })
     const uploaderIdx = this.uploaderCurrentIndex
@@ -67,7 +72,7 @@ export struct ReplyImagePicker {
       const file = await fs.open(albumPath, fs.OpenMode.READ_ONLY)
       const photoSize = fs.statSync(file.fd).size
       if (photoSize > limitInBytes) {
-        this.getUIContext().getPromptAction().showToast({
+        ShowToast({
           message: `第${i + 1}张图片超出${uploader.sizeLimitMB()}MB的大小限制，未被上传`
         })
         await fs.close(file)
@@ -84,7 +89,7 @@ export struct ReplyImagePicker {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       let imgService = conf.image_upload_service
       imgService = Math.min(this.uploaders.length - 1, Math.max(0, imgService))
       this.swiperIndex = this.uploaderCurrentIndex = imgService
@@ -264,18 +269,8 @@ export struct ReplyImagePicker {
                     .width('100%')
                     .height('100%')
                     .onClick(async () => {
-                      const PhotoSelectOptions = new photoAccessHelper.PhotoSelectOptions()
-                      PhotoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE
-                      PhotoSelectOptions.maxSelectNumber = 10
-                      PhotoSelectOptions.recommendationOptions = {
-                        textContextInfo: {
-                          text: '文件最大' + this.uploaders[this.uploaderCurrentIndex].sizeLimitMB() + 'MB'
-                        }
-                      }
-                      const photoPicker = new photoAccessHelper.PhotoViewPicker()
-                      const photoSelectResult: photoAccessHelper.PhotoSelectResult =
-                        await photoPicker.select(PhotoSelectOptions)
-                      this.upload(photoSelectResult.photoUris)
+                      const uris = await PhotoViewPicker(this.uploaders[this.uploaderCurrentIndex].sizeLimitMB())
+                      this.upload(uris)
                     })
                   }.height(IMG_THUMBNAIL_HEIGHT)
                 }
@@ -401,7 +396,7 @@ abstract class Uploader {
         if (magic.startsWith('424D')) {
           return 'image/bmp'
         }
-        promptAction.showToast({
+        ShowToast({
           message: '未知的文件格式，上传中止'
         })
         return ''
@@ -508,7 +503,7 @@ class AttachmentUploader extends Uploader {
         ]
       })
       if (result.index == 0) {
-        promptAction.showToast({
+        ShowToast({
           message: '操作已取消'
         })
         return false
@@ -543,7 +538,7 @@ class AttachmentUploader extends Uploader {
     uploader.sessionConfig.headers = {
       "content-type": 'multipart/form-data'
     }
-    const multiForm = new rcp.MultipartForm({
+    const multiForm = new MultipartForm({
       'Filedata': {
         contentType: this.getMime(buf),
         remoteFileName: name,
@@ -565,7 +560,7 @@ class AttachmentUploader extends Uploader {
         .post(multiForm)
       return attachId
     } catch (e) {
-      promptAction.showToast({
+      ShowToast({
         message: '图片上传出错，请稍后重试'
       })
       return ''
@@ -632,13 +627,13 @@ class RipUploader extends Uploader {
         this.imgs.set(img.data.path, img.data)
         return img.data.path
       } else {
-        promptAction.showToast({
+        ShowToast({
           message: img.message
         })
         return ''
       }
     } catch (e) {
-      promptAction.showToast({
+      ShowToast({
         message: '图片上传出错，请稍后重试'
       })
       return ''

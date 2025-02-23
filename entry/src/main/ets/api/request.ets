@@ -1,32 +1,14 @@
 import { BusinessError } from '@kit.BasicServicesKit';
 import { rcp } from '@kit.RemoteCommunicationKit';
 import { URL } from './base';
-import { Queue, url } from '@kit.ArkTS';
+import { url } from '@kit.ArkTS';
 import Account, { Notice } from './model/account';
-import { promptAction } from '@kit.ArkUI';
 import wrapper, { wrapperApp } from './wrapper';
 import { getCache, putCache } from '../common/dataStore/ApiCacheData';
+import { IRcpSession, Rcp, RcpResponse } from '../ArkUIX/Rcp/Rcp';
+import { ShowToast } from '../ArkUIX/Utils/ShowToast';
 import { PreferenceManager } from '../config/UserConfig';
 import { accountInvalid } from '../common/account/AccountManager';
-
-const waitQueue: Queue<VoidCallback> = new Queue
-
-function enqueueWait() {
-  return new Promise<void>((res) => waitQueue.add(res))
-}
-
-async function createSession(sessionConfig: rcp.SessionConfiguration) {
-  let session: rcp.Session | undefined = undefined
-  while (session === undefined) {
-    try {
-      session = rcp.createSession(sessionConfig)
-    } catch (e) {
-      await enqueueWait()
-      // 1007900994 会话数达到限制，当前最多可创建16个session实例。
-    }
-  }
-  return session
-}
 
 export let userCookieString: string = ''
 
@@ -36,12 +18,12 @@ let userAppToken: string | undefined = undefined
 
 interface reqError {
   type: 'Response' | 'BusinessError' | 'FromCacheOnly',
-  data: rcp.Response | BusinessError | null
+  data: RcpResponse | BusinessError | null
 }
 
 interface respError extends reqError {
   type: 'Response',
-  data: rcp.Response
+  data: RcpResponse
 }
 
 interface businessError extends reqError {
@@ -182,9 +164,9 @@ export default class request<T> {
     return this
   }
 
-  private wrapper(request: (session: rcp.Session) => Promise<rcp.Response>) {
+  private wrapper(request: (session: IRcpSession) => Promise<RcpResponse>) {
     return new Promise<T>(async (fulfill, reject) => {
-      const session = await createSession(this.sessionConfig)
+      const session = await Rcp.createSession(this.sessionConfig)
       request(session).then(resp => {
         if (resp === undefined) {
           throw new Error('network error')
@@ -226,11 +208,11 @@ export default class request<T> {
                 setUserNotice(webApiData.Variables.notice)
               }
               if (webApiData?.Variables?.error) {
-                promptAction.showToast({
+                ShowToast({
                   message: '论坛异常: ' + webApiData.Variables.error
                 })
               }
-              PreferenceManager.readonly(conf => {
+              PreferenceManager.read(conf => {
                 if (webApiData?.Variables && webApiData.Variables.member_uid != conf.user_uid) {
                   accountInvalid()
                 }
@@ -268,11 +250,7 @@ export default class request<T> {
         }
         reject(err)
       }).finally(() => {
-        session.close()
-        if (waitQueue.length > 0) {
-          waitQueue.getFirst()()
-          waitQueue.pop()
-        }
+        Rcp.closeSession(session)
       })
     })
   }
@@ -313,7 +291,7 @@ export default class request<T> {
     if (this.fromCacheOnly) {
       return rejectByCache()
     }
-    return this.wrapper((session: rcp.Session) => session.get(path))
+    return this.wrapper((session: IRcpSession) => session.get(path))
   }
 
   private isFormData: boolean = false
@@ -347,7 +325,7 @@ export default class request<T> {
     } else if (this.isFormData) {
       payload = content
     } else {
-      payload = new url.URLParams(content as Record<string, string>).toString()
+      payload = new url.URLParams(content as Record<string, string>)?.toString()
     }
     const reqPath = this.addParams(this.path)
     if (this.cacheCallback) {
@@ -367,12 +345,16 @@ export default class request<T> {
     if (this.fromCacheOnly) {
       return rejectByCache()
     }
-    return this.wrapper((session: rcp.Session) => session.post(reqPath, payload))
+    return this.wrapper((session: IRcpSession) => session.post(reqPath, payload))
   }
 }
 
 function setUserCookieString(cookie: rcp.RequestCookies) {
-  userCookieString = Object.entries(cookie)
+  userCookieString = rcpCookie2string(cookie)
+}
+
+export function rcpCookie2string(cookie: rcp.RequestCookies) {
+  return Object.entries(cookie)
     .filter(v => v[1] !== undefined)
     .map(v => `${v[0]}=${v[1]}`)
     .join('; ')
