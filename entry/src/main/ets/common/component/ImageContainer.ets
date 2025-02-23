@@ -1,11 +1,12 @@
-import { ImageKnifeComponent } from '@ohos/imageknife'
-import { DomainRegex } from '../../api/base'
+import { ImageKnifeComponent, ImageKnifeRequest } from '@ohos/imageknife'
 import { userCookieString } from '../../api/request'
-import { openInBrowser } from '../WantUitl'
+import { openInBrowser } from '../../ArkUIX/Utils/WantUitl'
 import { common } from '@kit.AbilityKit'
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage'
 import { FontSizeEnum } from '../fontSize/FontSizeEnum'
 import { ImageViewerTransitionToSize } from './ImageViewer'
+import { DomainRegex } from '../../api/base'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export interface RectSize {
   w: number,
@@ -22,10 +23,10 @@ export struct ImageContainer {
   @State loadingProgress: number = 0
   @State loadFailed: boolean = false
   imgSize?: RectSize
+  retry: number = 0
   @Prop @Watch('resize') constrainSize: RectSize | undefined = undefined
   lastConstrainSizeWidth: number | undefined = undefined
   src: string = ''
-  retry: number = 0
   usedByImageViewer: boolean = false
   @Prop imgHeight: number | string = 100 * FontSizeEnum[this.appState.fontSize].ratio
   @Prop imgWidth: number | string = '100%'
@@ -112,7 +113,7 @@ export struct ImageContainer {
             loadSrc: encodeURI(this.imageUrl),
             objectFit: ImageFit.Contain,
             onLoadListener: {
-              onLoadFailed: (err) => {
+              onLoadFailed: (err: string, request?: ImageKnifeRequest) => {
                 if (this.retry >= MAX_RETRY) {
                   this.loadFailed = true
                   this.onFailed()

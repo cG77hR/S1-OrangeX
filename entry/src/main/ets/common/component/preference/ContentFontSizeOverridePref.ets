@@ -38,7 +38,7 @@ export struct ContentFontSizeOverridePref {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.fontSizeOverrideSelected.push(conf.font_size_override)
     })
   }

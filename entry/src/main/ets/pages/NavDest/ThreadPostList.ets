@@ -15,7 +15,6 @@ import { formatRelativeTime } from '../../common/TimeFormat'
 import { PageNameEnum } from '../PageNameEnum'
 import { BottomSafeArea } from '../../common/component/BottomSafeArea'
 import { AppThemeColor } from '../../common/theme/basic/basic'
-import { JSON } from '@kit.ArkTS'
 import { ImageViewer, ImageViewerParam } from '../../common/component/ImageViewer'
 import { openOrJumpTo } from '../SingletonPage'
 import { SwipePageLoadingIcon, SwipePageViewer } from '../../common/component/SwipePageViewer'
@@ -27,10 +26,10 @@ import {
   RecordThreadViewHistory
 } from '../../common/dataStore/HistoryData'
 import { ArrayDataSource, ReloadController } from '../../common/BasicDataSource'
-import { openInBrowser, openS1LinkLike } from '../../common/WantUitl'
+import { openInBrowser, openS1LinkLike } from '../../ArkUIX/Utils/WantUitl'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import Account from '../../api/model/account'
-import { CopyHyperLink, ShareText } from '../../common/ShareKit'
+import { CopyHyperLink, ShareText } from '../../ArkUIX/Utils/ShareKit'
 import { ErrorTips } from '../../common/component/ErrorTips'
 import { PostRating, ThreadRatingInfo } from '../../common/component/PostRating'
 import { openPostRatingDetail, PostRatingDetailParam } from './PostRatingDetail'
@@ -57,7 +56,8 @@ import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { HiddenPostDisplay } from '../../config/v1/default'
 import { LengthUnit } from '@kit.ArkUI'
 import { PropKey, SafeArea } from '../../common/Constants'
-import { DownloadFile } from '../../api/download'
+import { DownloadFile } from '../../ArkUIX/Utils/Download'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 interface PostViewModel {
   node: UIRootNode[]
@@ -122,20 +122,16 @@ export struct ThreadPostList {
     this.totalPage = parseInt(this.pageParam?.replies || '0') > 1 ?
     Math.ceil(parseInt(this.pageParam?.replies || '0') / POST_PER_PAGE) : 1
     if (this.pageParam.jumpToPage && !this.jumpToPageDone && this.pageParam.jumpToPage <= this.totalPage) {
-      setTimeout(() => {
-        let jumpToPage = this.pageParam.jumpToPage!
-        if (jumpToPage < 0) {
-          this.jumpToPage = Math.max(1, this.totalPage + 1 + jumpToPage)
-        } else if (jumpToPage > 1) {
-          this.jumpToPage = Math.min(this.totalPage, jumpToPage)
-        }
-      })
+      let jumpToPage = this.pageParam.jumpToPage!
+      if (jumpToPage < 0) {
+        this.jumpToPage = Math.max(1, this.totalPage + 1 + jumpToPage)
+      } else if (jumpToPage > 1) {
+        this.jumpToPage = Math.min(this.totalPage, jumpToPage)
+      }
       this.jumpToPageDone = true
     }
     if (this.pageParam.jumpToPid && !this.jumpToPostDone) {
-      setTimeout(() => {
-        this.jumpToPost = this.pageParam.jumpToPid
-      })
+      this.jumpToPost = this.pageParam.jumpToPid
       this.jumpToPostDone = true
     }
     if (this.pageParam.subject && this.pageParam.replies && this.pageParam.authorid === undefined) {
@@ -185,16 +181,16 @@ export struct ThreadPostList {
                     'id': this.pageParam.tid
                   }).then(v => {
                   if (v.Message.messageval.includes('success')) {
-                    this.getUIContext().getPromptAction().showToast({
+                    ShowToast({
                       message: '收藏成功'
                     })
                   } else if (v.Message.messageval.includes('repeat')) {
-                    this.getUIContext().getPromptAction().showToast({
+                    ShowToast({
                       message: '已收藏过本贴，收藏操作重复'
                     })
                   }
                 }).catch((e: RequestError) => {
-                  this.getUIContext().getPromptAction().showToast({
+                  ShowToast({
                     message: '收藏出错',
                   })
                 })
@@ -401,6 +397,7 @@ struct SinglePostPage {
   @Consume pageScrollOffset: Map<number, number>
   @State isLoading: boolean = true
   postDataSource: ArrayDataSource<PostViewModel> = new ArrayDataSource()
+  postStringify: string [] = []
   @State postHidden: Map<string, UIRootNode[]> = new Map
   @State postHiddenExpand: boolean[] = []
   @State postFloorNumber: string[] = []
@@ -459,7 +456,7 @@ struct SinglePostPage {
   processPostListV4(v: wrapper<PostListV4>) {
     let rawPostList = v.Variables.postlist
     if (rawPostList.length == 0) {
-      this.getUIContext().getPromptAction().showToast({
+      ShowToast({
         message: v.Message.messagestr || '未获取到帖文内容'
       })
       this.threadNotExist = true
@@ -533,9 +530,10 @@ struct SinglePostPage {
     let postArray: PostViewModel[] = []
     let rawPostList = v.data.list
     this.imgUrl = []
+    this.postStringify = []
     parseXML(rawPostList).forEach((root, index) => {
       const post = PostContentParser(root, this.imgUrl)
-      postArray.push({
+      const vm: PostViewModel = {
         node: post.node,
         uid: rawPostList[index].authorid.toString(),
         username: rawPostList[index].author,
@@ -543,24 +541,25 @@ struct SinglePostPage {
         timestamp: new Date(rawPostList[index].dateline * 1000),
         userCredit: rawPostList[index].e ?
           '(' + (rawPostList[index].e >= 0 ? '+' : '') + rawPostList[index].e.toString() + ')' : '(+0)'
-      })
+      }
+      this.postStringify.push(rawPostList[index].message)
+      postArray.push(vm)
     })
-
     this.updatePostDatetime()
-    rawPostList.forEach((p, i) => {
+    for (let i = 0; i < rawPostList.length; i++) {
+      const p = rawPostList[i]
       this.pidMap[i] = p.pid.toString()
       if (this.jumpToPost == p.pid.toString()) {
-        setTimeout((): void => {
-          this.scroller.scrollToIndex(i, false, ScrollAlign.START)
-          setTimeout((): void => this.scroller.scrollToIndex(i, false, ScrollAlign.START),
-            50) // 如果有图片布局会重新计算，再跳转一次
-          if (this.pageParam.jumpToPidWithHighlight) {
-            setTimeout(() => this.pageParam.jumpToPidWithHighlight = false, 100)
-          }
-        })
+        if (this.pageParam.jumpToPidWithHighlight) {
+          setTimeout(() => {
+            this.pageParam.jumpToPidWithHighlight = false
+          }, 100)
+        }
+        this.scroller.scrollToIndex(i, false, ScrollAlign.START)
+        setTimeout((): void => this.scroller.scrollToIndex(i, false, ScrollAlign.START), 50)
         this.jumpToPost = ''
       }
-    })
+    }
 
     const lastUpdatePostCount = this.postDataSource.totalCount()
     if (this.postDataSource.totalCount() == 0) {
@@ -956,7 +955,7 @@ struct SinglePostPage {
             .margin({ bottom: 8 })
           }
 
-        }, (post: PostViewModel, index: number) => JSON.stringify(post) + this.postFloorNumber[index])
+        }, (post: PostViewModel, index: number) => this.postFloorNumber[index] + this.postStringify[index])
         ListItem() {
           BottomSafeArea()
         }

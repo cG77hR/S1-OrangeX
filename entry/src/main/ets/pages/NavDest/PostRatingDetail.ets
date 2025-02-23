@@ -6,15 +6,14 @@ import { PageNameEnum } from '../PageNameEnum'
 import { openOrJumpTo } from '../SingletonPage'
 import { common } from '@kit.AbilityKit'
 import { PostRatingPanel, POST_RATING_SLICE_SIZE, Rating, requestRating } from '../../common/component/PostRating'
-import { HeavyClickEffect, Spring035s } from '../../common/Animation'
+import { HeavyClickEffect, OpacityTransition, Spring035s } from '../../common/Animation'
 import { RoundPanel } from './Preferences'
 import request from '../../api/request'
 import { URL } from '../../api/base'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PreferenceState } from '../NavProvider/NavigationPage'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { waitFor } from '../../common/AwaitUtil'
-import { promptAction } from '@kit.ArkUI'
-
 
 export interface PostRatingPopData {
   ratingChanged: boolean
@@ -224,12 +223,12 @@ export struct PostRatingDetail {
                           .toText()
                           .post(this.formData).then(htmlStr => {
                           if (htmlStr.includes('succeedhandle_rate')) {
-                            promptAction.showToast({
+                            ShowToast({
                               message: '评分成功'
                             })
                           } else {
-                            promptAction.showToast({
-                              message: '评分时出现异常'
+                            ShowToast({
+                              message: '评分异常'
                             })
                           }
                           this.reload()

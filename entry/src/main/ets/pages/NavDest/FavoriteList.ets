@@ -21,6 +21,7 @@ import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { ReloadController } from '../../common/BasicDataSource'
 import { PropKey } from '../../common/Constants'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 @Component
 export struct FavoriteList {
@@ -44,7 +45,7 @@ export struct FavoriteList {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.uid = conf.user_uid
     })
   }
@@ -160,7 +161,7 @@ struct SingleFavPage {
   }
 
   removeFavError(msg: string, itemId: string) {
-    this.getUIContext().getPromptAction().showToast({
+    ShowToast({
       message: '移除收藏失败: ' + msg
     })
   }

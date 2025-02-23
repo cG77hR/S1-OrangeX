@@ -24,10 +24,11 @@ import {
   ToggleEnableBlockKeyword,
   UnblockKeyword
 } from '../../common/dataStore/BlockKeyword'
-import { CopyText } from '../../common/ShareKit'
+import { CopyText } from '../../ArkUIX/Utils/ShareKit'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { PropKey } from '../../common/Constants'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 
 @Component
@@ -231,7 +232,7 @@ export struct BlockListPage {
                       this.reloadBlockKws()
                       this.blockKwInput = ''
                     } catch (err) {
-                      this.getUIContext().getPromptAction().showToast({
+                      ShowToast({
                         message: '不符合正则语法，添加失败'
                       })
                     }

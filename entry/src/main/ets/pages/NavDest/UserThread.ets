@@ -15,6 +15,7 @@ import { unescapeXml } from '../../common/XmlParser'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { PropKey } from '../../common/Constants'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export interface UserThreadParam {
   uid: string
@@ -206,7 +207,7 @@ struct UserThreadPage {
                       .onClick(() => {
                         openThreadPostByLink(URL.WEB_BASE + reply.replyUrl,
                           this.pathStack, () => {
-                            this.getUIContext().getPromptAction().showToast({
+                            ShowToast({
                               message: '解析帖子链接出错'
                             })
                           }, item.subject, item.repliesCount)

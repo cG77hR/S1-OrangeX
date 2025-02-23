@@ -11,18 +11,18 @@ import request, {
 } from '../../api/request'
 import wrapper, { wrapperApp } from '../../api/wrapper'
 import { PreferenceManager } from '../../config/UserConfig'
-import { createOrUpdateAsset, queryAsset, removeAsset } from '../AssetStore'
+import { createOrUpdateAsset, queryAsset, removeAsset } from '../../ArkUIX/Asset/AssetStore'
 import { clearThreadViewHistory, HistoryDbSetUser } from '../dataStore/HistoryData'
 import Account from '../../api/model/account'
 import { rcp } from '@kit.RemoteCommunicationKit'
 import { LoginResultApp } from '../../api/model/app/login'
 import { BlockListSetUser, clearBlockList } from '../dataStore/BlockUser'
-import { promptAction } from '@kit.ArkUI'
 import { clearDraft, DraftDbSetUser } from '../dataStore/DraftData'
 import { waitFor } from '../AwaitUtil'
 import { Event } from '../Events'
 import { PropKey } from '../Constants'
 import { ApiCacheSetUser, clearApiCache } from '../dataStore/ApiCacheData'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export enum LoginResult {
   SUCCEED,
@@ -142,9 +142,9 @@ export async function logout() {
 }
 
 export async function accountInvalid() {
-  PreferenceManager.readonly(conf => {
+  PreferenceManager.read(conf => {
     if (conf.user_uid) {
-      promptAction.showToast({
+      ShowToast({
         message: '当前登陆状态失效，请重新登录'
       })
       logout()
@@ -175,7 +175,7 @@ let restoreAccountPromise: Promise<void>
 
 function accountPromiseReset() {
   restoreAccountPromise = new Promise(resolve => restoreAccountFinished = async () => {
-    await PreferenceManager.readonly(async conf => {
+    await PreferenceManager.read(async conf => {
       await HistoryDbSetUser(conf.user_uid)
       await DraftDbSetUser(conf.user_uid)
       await BlockListSetUser(conf.user_uid)
@@ -190,7 +190,7 @@ accountPromiseReset()
 
 export function initAccountManager() {
   accountPromiseReset()
-  PreferenceManager.readonly((conf): Promise<void> => (async () => {
+  PreferenceManager.read((conf): Promise<void> => (async () => {
     if (conf.user_uid && conf.user_uid.length > 0) {
       const cookie = await queryAsset(cookieAssetAlias.get(conf.user_uid))
       const appToken = await queryAsset(appTokenAssetAlias.get(conf.user_uid))
@@ -209,7 +209,7 @@ export function initAccountManager() {
             conf.readaccess = isNaN(readaccess) ? 0 : readaccess
           })
         } catch (e) {
-          promptAction.showToast({
+          ShowToast({
             message: '连接网络超时'
           })
         }
@@ -223,7 +223,7 @@ async function dailySign() {
   // 可惜app签到在sid格式改了之后就不能用了
   const now = new Date()
   const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-  PreferenceManager.readonly(async conf => {
+  PreferenceManager.read(async conf => {
     const uidList = Object.keys(conf.account_list)
     for (const uid of uidList) {
       const user = conf.account_list[uid]
@@ -242,7 +242,7 @@ async function dailySign() {
             const signResult = extractSucceedMsg(sign)
             if (signResult || sign.includes('已签到')) {
               if (signResult) {
-                promptAction.showToast({
+                ShowToast({
                   message: `${conf.account_list[uid].name}: ${signResult}`,
                   duration: 2000
                 })

@@ -8,13 +8,13 @@ import { openOrJumpTo } from '../SingletonPage'
 import { PageNameEnum } from '../PageNameEnum'
 import { RoundPanel, SettingGroupHeader, SettingRow } from './Preferences'
 import BuildProfile from 'entry/BuildProfile'
-import { promptAction } from '@kit.ArkUI'
-import { openInBrowser } from '../../common/WantUitl'
+import { openInBrowser } from '../../ArkUIX/Utils/WantUitl'
 import { PropKey } from '../../common/Constants'
 import { openUserGuide } from './UserGuide'
 import { openThreadPost, ThreadPostParam } from './ThreadPostList'
 import { CacheStrategy, ImageKnife } from '@ohos/imageknife'
 import { OpacityTransition } from '../../common/Animation'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export interface AboutAppParam {}
 
@@ -223,7 +223,7 @@ export struct AboutApp {
                 Column() {
                   this.TextPrimary('本地最后提交哈希')
                   Row() {
-                    this.TextSecondary(BuildProfile.gitHeadHash)
+                    // this.TextSecondary(BuildProfile.gitHeadHash)
                   }.justifyContent(FlexAlign.End)
                   .width('100%')
                 }.SettingColumn()
@@ -231,18 +231,18 @@ export struct AboutApp {
 
               Row() {
                 this.TextPrimary('本地最后提交于')
-                this.TextSecondary(BuildProfile.gitHeadDate)
+                // this.TextSecondary(BuildProfile.gitHeadDate)
               }.justifyContent(FlexAlign.SpaceBetween)
               .attributeModifier(this.settingRow)
 
               Divider()
               Row() {
                 this.TextPrimary('软件包构建于')
-                this.TextSecondary(BuildProfile.buildDate)
+                // this.TextSecondary(BuildProfile.buildDate)
               }.justifyContent(FlexAlign.SpaceBetween)
               .attributeModifier(this.settingRow)
               .onClick(() => {
-                promptAction.showToast({
+                ShowToast({
                   message: '感谢你愿意动手构建并尝试本软件！   :)',
                   duration: 5000
                 })
@@ -264,7 +264,7 @@ export struct AboutApp {
 
               Divider()
               Row({ space: 12 }) {
-                this.TextPrimary('ImageKnife')
+                this.TextPrimary('@ohos/imageknife')
                 Blank()
                 this.ShareIcon()
               }.alignItems(VerticalAlign.Center)

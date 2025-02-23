@@ -5,16 +5,17 @@ import { PageIndexDataSource } from './SwipePageViewer'
 import { AppThemeColor } from '../theme/basic/basic'
 import { themeColorDark } from '../theme/basic/dark'
 import { curves, matrix4, window } from '@kit.ArkUI'
-import { SetStatusBarColor } from '../theme/SetStatusBarColor'
+import { SetStatusBarColor } from '../../ArkUIX/Utils/SetStatusBarColor'
 import { photoAccessHelper } from '@kit.MediaLibraryKit'
 import { ImageKnife } from '@ohos/imageknife'
 import { BusinessError } from '@kit.BasicServicesKit'
 import { extractFileExtension } from '../TextUtil'
 import { fileIo } from '@kit.CoreFileKit'
-import { CopyHyperLink, ShareImage } from '../ShareKit'
-import { displaySync } from '@kit.ArkGraphics2D'
-import { openInBrowser } from '../WantUitl'
+import { CopyHyperLink, ShareImage } from '../../ArkUIX/Utils/ShareKit'
+import { openInBrowser } from '../../ArkUIX/Utils/WantUitl'
 import { SafeArea } from '../Constants'
+import { DisplaySync } from '../../ArkUIX/DisplaySync/DisplaySync'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export interface ImageViewerParam {
   urls: string[],
@@ -26,28 +27,31 @@ const imgContainerSize: RectSize = {
   h: 0
 }
 
-const frameSync: displaySync.DisplaySync = displaySync.create()
-
+const frameSync = DisplaySync.getDisplaySync()
 
 let frameSyncIsOn: boolean = false
 
 function useFrameSync(f: (ts: number) => boolean) {
   if (frameSyncIsOn) {
-    frameSync?.off('frame')
+    frameSync?.stopAnimate()
   }
-  frameSync?.on('frame', e => {
-    if (!f(e.timestamp)) {
+  frameSync?.createAnimate({
+    min: 30,
+    max: 120,
+    expected: 120
+  }, e => {
+    if (!f(e)) {
       offFrameSync()
     }
   })
-  frameSync.start()
+  frameSync.startAnimate()
   frameSyncIsOn = true
 }
 
 function offFrameSync() {
   if (frameSyncIsOn) {
-    frameSync?.off('frame')
-    frameSync.stop()
+    frameSync.stopAnimate()
+    frameSync.deleteAnimate()
     frameSyncIsOn = false
   }
 }
@@ -109,21 +113,17 @@ export struct ImageViewer {
 
   showStatusBar() {
     window.getLastWindow(this.context).then(w => {
-      if (canIUse('SystemCapability.Window.SessionManager')) {
-        w.setSpecificSystemBarEnabled('status', true, true)
-        w.setSpecificSystemBarEnabled('navigation', true, true)
-        w.setSpecificSystemBarEnabled('navigationIndicator', true, true)
-      }
+      w.setSpecificSystemBarEnabled('status', true, true)
+      w.setSpecificSystemBarEnabled('navigation', true, true)
+      w.setSpecificSystemBarEnabled('navigationIndicator', true, true)
     })
   }
 
   hideStatusBar() {
     window.getLastWindow(this.context).then(w => {
-      if (canIUse('SystemCapability.Window.SessionManager')) {
-        w.setSpecificSystemBarEnabled('status', false, true)
-        w.setSpecificSystemBarEnabled('navigation', false, true)
-        w.setSpecificSystemBarEnabled('navigationIndicator', false, true)
-      }
+      w.setSpecificSystemBarEnabled('status', false, true)
+      w.setSpecificSystemBarEnabled('navigation', false, true)
+      w.setSpecificSystemBarEnabled('navigationIndicator', false, true)
     })
   }
 
@@ -159,7 +159,7 @@ export struct ImageViewer {
             }
             fileIo.close(readFile.fd)
             fileIo.close(writeFile.fd)
-            this.getUIContext().getPromptAction().showToast({
+            ShowToast({
               message: `保存成功, 文件大小${(fileSize / 1024 / 1024).toFixed(2)}MB`
             })
           }

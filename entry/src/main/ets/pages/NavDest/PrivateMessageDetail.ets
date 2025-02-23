@@ -19,7 +19,7 @@ import {
   UIRootNode
 } from '../../common/component/ThreadPostContent'
 import { openUserSpace, UserSpaceParam } from './UserSpace'
-import { openS1LinkLike } from '../../common/WantUitl'
+import { openS1LinkLike } from '../../ArkUIX/Utils/WantUitl'
 import { ImageViewer, ImageViewerParam } from '../../common/component/ImageViewer'
 import { HeavyClickEffect, Spring035s } from '../../common/Animation'
 import { formatRelativeTime } from '../../common/TimeFormat'

@@ -45,7 +45,7 @@ export struct NoteList {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.uid = conf.user_uid
     })
   }

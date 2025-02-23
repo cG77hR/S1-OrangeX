@@ -38,7 +38,7 @@ export struct ImageCachePref {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.imageCacheSelected.push(conf.image_cache_size)
     })
   }

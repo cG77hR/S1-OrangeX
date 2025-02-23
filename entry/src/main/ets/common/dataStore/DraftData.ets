@@ -180,9 +180,9 @@ export async function QueryDraft(offset = 0, limit = 100) {
   }
   await dbInitPromise
   try {
-    await dbEngine!.execute(`
+    await dbEngine!.executeSql(`
     DELETE FROM ${tableNameForUser()} WHERE ${COLUMN.date} NOT IN (
-    SELECT ${COLUMN.date} FROM ${tableNameForUser()} ORDER BY ${COLUMN.date} DESC LIMIT ${MAX_DRAFT_ITEM});`)
+    SELECT ${COLUMN.date} FROM ${tableNameForUser()} ORDER BY ${COLUMN.date} DESC LIMIT ${MAX_DRAFT_ITEM})`)
     const predicates = new relationalStore.RdbPredicates(tableNameForUser())
       .orderByDesc(COLUMN.date)
       .offsetAs(offset)

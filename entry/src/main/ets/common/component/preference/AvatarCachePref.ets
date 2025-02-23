@@ -36,7 +36,7 @@ export struct AvatarCachePref {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.avatarCacheLevelSelected.push(conf.avatar_cache_ttl)
     })
   }

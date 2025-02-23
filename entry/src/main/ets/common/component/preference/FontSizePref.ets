@@ -34,7 +34,7 @@ export struct FontSizePref {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.fontSizeSelected.push(conf.font_size)
     })
   }

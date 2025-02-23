@@ -9,7 +9,7 @@ import { TitleBar, TitleBarLeftButtonType } from '../../common/component/TitleBa
 import { common } from '@kit.AbilityKit'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { openSearchPage } from '../NavDest/SearchPage'
-import { openInBrowser } from '../../common/WantUitl'
+import { openInBrowser } from '../../ArkUIX/Utils/WantUitl'
 import { PreferenceState } from './NavigationPage'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PropKey, SafeArea } from '../../common/Constants'

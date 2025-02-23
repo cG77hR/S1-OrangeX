@@ -4,11 +4,12 @@ import { ClickDarkenEffect, HeavyClickEffect } from '../Animation';
 import { BasicDataSource } from '../BasicDataSource';
 import { AppThemeColor } from '../theme/basic/basic';
 import { BottomSafeArea } from './BottomSafeArea';
+import { ImageSmily } from './ImageSmily';
 import { common } from '@kit.AbilityKit';
 import { readJson, writeJson } from '../dataStore/JsonPersist';
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage';
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast';
 import { ImageSmilyLazy } from './ImageSmilyLazy';
-import { promptAction } from '@kit.ArkUI';
 
 const SMILY_COL_NUM = 8
 
@@ -98,7 +99,7 @@ export struct SmilyPicker {
 
   aboutToAppear(): void {
     loadCache(() => {
-      promptAction.showToast({
+      ShowToast({
         message: '表情包功能初次加载，耗时较长'
       })
     }).then(cache => {

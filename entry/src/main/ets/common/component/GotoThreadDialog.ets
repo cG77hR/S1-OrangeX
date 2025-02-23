@@ -1,3 +1,4 @@
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { openThreadPost, openThreadPostByLink, ThreadPostParam } from '../../pages/NavDest/ThreadPostList'
 
 @CustomDialog
@@ -34,7 +35,7 @@ export struct GotoThreadDialog {
             } else {
               openThreadPostByLink(this.threadUrl,
                 this.getPathStack(), () => {
-                  this.getUIContext().getPromptAction().showToast({
+                  ShowToast({
                     message: '解析帖子链接出错'
                   })
                 })

@@ -17,6 +17,7 @@ import { PreferenceManager } from '../../config/UserConfig'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PropKey } from '../../common/Constants'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export enum SearchType {
   Thread = 0,
@@ -112,7 +113,7 @@ export struct SearchPage {
                     return
                   }
                   if (this.keywordInput.length == 0) {
-                    this.getUIContext().getPromptAction().showToast({
+                    ShowToast({
                       message: '请输入搜索内容'
                     })
                     return
@@ -217,7 +218,7 @@ struct SearchResultPage {
             }
             this.threadDataSource.reload(result)
           } else if (this.searchRequestType == SearchType.User || this.searchRequestType == SearchType.Friend) {
-            PreferenceManager.readonly(conf => {
+            PreferenceManager.read(conf => {
               let result: UserSearchResult
               if (this.searchRequestType == SearchType.Friend && this.directSearchUrl.includes(conf.user_uid)) {
                 result = extractSelfFriendResult(htmlStr)
@@ -227,7 +228,7 @@ struct SearchResultPage {
               this.totalPage = result.page
               this.userDataSource.reload(result.users)
               if (result.errorMsg) {
-                this.getUIContext().getPromptAction().showToast({
+                ShowToast({
                   message: result.errorMsg,
                   duration: 5000
                 })

@@ -23,6 +23,7 @@ import { EventListenerHandler } from '../../common/EventListener'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { PropKey } from '../../common/Constants'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 class DraftDataSource extends DbPageDataSource<DraftItem> {
   override pageSize: number = 20
@@ -62,7 +63,7 @@ export struct DraftPage {
   }
 
   loadUser() {
-    PreferenceManager.readonly(async conf => {
+    PreferenceManager.read(async conf => {
       await DraftDbSetUser(conf.user_uid)
       this.draftCount = await this.dataSource.reload()
     })
@@ -126,7 +127,7 @@ export struct DraftPage {
                   delete: async () => {
                     const result = await DeleteDraft(item)
                     if (!result) {
-                      this.getUIContext().getPromptAction().showToast({
+                      ShowToast({
                         message: '删除时发生了预料外的错误'
                       })
                     }

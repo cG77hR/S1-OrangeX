@@ -5,10 +5,10 @@ import { PreferenceManager } from '../../config/UserConfig'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { PageNameEnum } from '../PageNameEnum'
 import { openOrJumpTo } from '../SingletonPage'
-import { promptAction } from '@kit.ArkUI'
 import { openHistoryPage } from './ViewHistory'
 import { openFavoriteList } from './FavoriteList'
 import { PropKey } from '../../common/Constants'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 @Component
 export struct SplitModeShortcut {
@@ -33,7 +33,7 @@ export struct SplitModeShortcut {
           PreferenceManager.modify(conf => {
             conf.split_mode = false
             this.appState.splitMode = false
-            promptAction.showToast({
+            ShowToast({
               message: '需要时，可前往设置页开启分栏模式'
             })
           })

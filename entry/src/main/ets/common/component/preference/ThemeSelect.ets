@@ -16,7 +16,7 @@ export struct ThemeSelectPanel {
   context = getContext(this) as common.UIAbilityContext
 
   aboutToAppear(): void {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.themeSelected = conf.theme
       ThemeArray.forEach((theme, i) => {
         this.themeColors.push({

@@ -21,7 +21,7 @@ import { openWriteReply, WriteReplyMode, WriteReplyParam } from '../NavDest/Writ
 import { BLOCK_USER_LIST_STATE } from '../../common/dataStore/BlockUser'
 import { PreferenceState } from './NavigationPage'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
-import { openInBrowser } from '../../common/WantUitl'
+import { openInBrowser } from '../../ArkUIX/Utils/WantUitl'
 import { ReloadController } from '../../common/BasicDataSource'
 import { PropKey } from '../../common/Constants'
 
@@ -94,7 +94,7 @@ export struct ThreadListView {
   }
 
   loadReadAccess() {
-    PreferenceManager.readonly(conf => {
+    PreferenceManager.read(conf => {
       this.threadReadAccess = conf.readaccess
     })
   }
@@ -122,7 +122,7 @@ export struct ThreadListView {
             content: item.name
           }).onClick(e => {
             this.forumInfo = item
-            setTimeout(() => this.reloadCtrl.reload())
+            this.reloadCtrl.reload()
           })
         })
       }
@@ -256,8 +256,9 @@ struct ThreadListPage {
   }
 
   aboutToReuse(): void {
-    if (this.generatePageKey() != this.pageLoadedKey)
+    if (this.generatePageKey() != this.pageLoadedKey) {
       this.threadList = []
+    }
     this.requestPageData()
   }
 
@@ -266,63 +267,63 @@ struct ThreadListPage {
   }
 
   async processThreadList(v: wrapper<ThreadList>) {
-      if (this.forumInfo && v.Variables.forum.threadcount != this.forumInfo?.threadcount) {
-        this.forumInfo.threadcount = v.Variables.forum.threadcount
+    if (this.forumInfo && v.Variables.forum.threadcount != this.forumInfo?.threadcount) {
+      this.forumInfo.threadcount = v.Variables.forum.threadcount
+    }
+    if (this.sublist.length != v.Variables.sublist.length) {
+      this.sublist = v.Variables.sublist
+    }
+    if (this.pageToLoad == 1) {
+      let showTopList: boolean = true
+      await PreferenceManager.read(conf => showTopList = conf.show_top_thread)
+      if (!showTopList) {
+        v.Variables.forum_threadlist =
+          v.Variables.forum_threadlist.filter(v => v.displayorder != ForumThreadDisplayOrder.top)
       }
-      if (this.sublist.length != v.Variables.sublist.length) {
-        this.sublist = v.Variables.sublist
+    }
+    let threadTypeNameMap = v.Variables.threadtypes.types
+    this.context.eventHub.emit(Event.ThreadTypesInit, threadTypeNameMap)
+    let viewData = v.Variables.forum_threadlist.map(v => {
+      let readAccess = parseInt(v.readperm)
+      readAccess = isNaN(readAccess) ? 0 : readAccess
+      let t: ThreadListItemViewData = {
+        subject: unescapeAll(v.subject),
+        replies: v.replies,
+        typeName: threadTypeNameMap[v.typeid] || '',
+        tid: v.tid,
+        uid: v.authorid,
+        readperm: readAccess
       }
-      if (this.pageToLoad == 1) {
-        let showTopList: boolean = true
-        await PreferenceManager.readonly(conf => showTopList = conf.show_top_thread)
-        if (!showTopList) {
-          v.Variables.forum_threadlist =
-            v.Variables.forum_threadlist.filter(v => v.displayorder != ForumThreadDisplayOrder.top)
-        }
-      }
-      let threadTypeNameMap = v.Variables.threadtypes.types
-      this.context.eventHub.emit(Event.ThreadTypesInit, threadTypeNameMap)
-      let viewData = v.Variables.forum_threadlist.map(v => {
-        let readAccess = parseInt(v.readperm)
-        readAccess = isNaN(readAccess) ? 0 : readAccess
-        let t: ThreadListItemViewData = {
-          subject: unescapeAll(v.subject),
-          replies: v.replies,
-          typeName: threadTypeNameMap[v.typeid] || '',
-          tid: v.tid,
-          uid: v.authorid,
-          readperm: readAccess
-        }
-        return t
-      })
-      if (this.threadList.length > 0) {
-        const tidSet: Set<string> = new Set()
-        this.threadList.forEach(t => tidSet.add(t.tid))
-        if (viewData.filter(t => tidSet.has(t.tid)).length > THREAD_PER_PAGE * 0.1) {
-          animateTo({ duration: 200, curve: Curve.EaseInOut }, () => {
-            this.threadList = viewData
-          })
-        } else {
+      return t
+    })
+    if (this.threadList.length > 0) {
+      const tidSet: Set<string> = new Set()
+      this.threadList.forEach(t => tidSet.add(t.tid))
+      if (viewData.filter(t => tidSet.has(t.tid)).length > THREAD_PER_PAGE * 0.1) {
+        animateTo({ duration: 200, curve: Curve.EaseInOut }, () => {
           this.threadList = viewData
-        }
+        })
       } else {
         this.threadList = viewData
       }
-      this.loadingIcon?.hide(this.pageToLoad)
-      this.dataLoading = false
-      this.threadNewReplyCount = {}
-      QueryThreadReplyCount(v.Variables.forum_threadlist.map(v => parseInt(v.tid))).then(viewedThread => {
-        v.Variables.forum_threadlist.forEach(v => {
-          if (viewedThread[v.tid]) {
-            const replies = parseInt(v.replies) + 1 // v.replies没有计入主楼，而数据库记录的回帖数把主楼计入了，需要+1来匹配
-            const newCount = replies - viewedThread[v.tid]
-            if (!isNaN(newCount) && newCount >= 0) {
-              this.threadNewReplyCount[v.tid] = newCount.toString()
-            }
+    } else {
+      this.threadList = viewData
+    }
+    this.loadingIcon?.hide(this.pageToLoad)
+    this.dataLoading = false
+    this.threadNewReplyCount = {}
+    QueryThreadReplyCount(v.Variables.forum_threadlist.map(v => parseInt(v.tid))).then(viewedThread => {
+      v.Variables.forum_threadlist.forEach(v => {
+        if (viewedThread[v.tid]) {
+          const replies = parseInt(v.replies) + 1 // v.replies没有计入主楼，而数据库记录的回帖数把主楼计入了，需要+1来匹配
+          const newCount = replies - viewedThread[v.tid]
+          if (!isNaN(newCount) && newCount >= 0) {
+            this.threadNewReplyCount[v.tid] = newCount.toString()
           }
-        })
+        }
       })
-      return v
+    })
+    return v
   }
 
   requestPageData() {
@@ -339,7 +340,8 @@ struct ThreadListPage {
       .param('page', requestPageIndex)
       .param('typeid', this.threadTypeFilter)
       .param('tpp', THREAD_PER_PAGE.toString())
-      .cache((v): Promise<wrapper<ThreadList>> => this.processThreadList(v), this.threadList.length > 0 && this.generatePageKey() == this.pageLoadedKey)
+      .cache((v): Promise<wrapper<ThreadList>> => this.processThreadList(v),
+        this.threadList.length > 0 && this.generatePageKey() == this.pageLoadedKey)
       .get()
       .then((v): Promise<wrapper<ThreadList>> => this.processThreadList(v))
   }
@@ -380,7 +382,8 @@ struct ThreadListPage {
               })
             }
             .enabled(this.threadReadAccess >= threadInfo.item.readperm)
-            .opacity(this.threadReadAccess >= threadInfo.item.readperm && !this.blockList.has(threadInfo.item.uid) ? 1 : 0.6)
+            .opacity(this.threadReadAccess >= threadInfo.item.readperm && !this.blockList.has(threadInfo.item.uid) ? 1 :
+              0.6)
             .height('auto')
             .width('100%')
             .geometryTransition('thread_item' + this.pageToLoad + '_' + threadInfo.item.tid, { follow: true })
