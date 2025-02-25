@@ -1,3 +1,33 @@
+# S1-OrangeX (Android)
+本项目为[S1-Orange](https://github.com/wly5556/S1-Orange)的分叉，尝试使用[ArkUI**X**](https://gitcode.com/arkui-x)框架进行跨平台移植。
+
+### 项目状态：
+
+- **ArkUIX SDK14**: 🟢整体已完成移植，逻辑代码共通 🟡跨平台框架存在缺陷，导致部分功能体验不佳
+
+#### 跨平台框架缺陷备忘
+
+| **功能**              | **SDK14** | **SDK16（未发布）** | **备注**                                                                     |
+|---------------------|-----------|----------------|----------------------------------------------------------------------------|
+| vp2px               | 🔴        |                | 并发线程内未定义，与鸿蒙平台运行时差异                                                        |
+| setTimeout          | 🔴        |                | 有时不触发更新，与鸿蒙平台运行时差异                                                         |
+| svg fill color      | 🔴        |                | [GitCode Issue #6](https://gitcode.com/arkui-x/arkui_for_android/issues/6) |
+| setcolormode        | 🔴        | 🟢             | 支持 since API16                                                             |
+| textarea 光标错误       | 🔴        |                | 光标显示异常                                                                     |
+| request.agent 下载403 | 🔴        |                | 403 下载错误                                                                   |
+| displaySync         | 🟡        |                | 需 Polyfill                                                                 |
+| navigation          | 🟡        |                | 不支持路由表（可绕过）                                                                |
+| rcp                 | 🟡        |                | 需 Polyfill                                                                 |
+| segment button      | 🟡        | 🟢             | 支持 since API16                                                             |
+| want                | 🟡        |                | 需 Polyfill                                                                 |
+| asset               | 🟡        |                | 需 Polyfill → SQLite                                                        |
+| clip board          | 🟡        |                | 需 Polyfill                                                                 |
+| share               | 🟡        |                | 需 Polyfill                                                                 |
+| toast               | 🟡        |                | 需 Polyfill                                                                 |
+| executeSync         | 🟡        |                | 多行错误（轻微）                                                                   |
+| fullscreen          | 🟡        |                | 与声称功能不一致（轻微）                                                               |
+
+## （源仓库README)
 
   <div style="display: flex; align-items: center;">
     <img src="entry/src/main/resources/base/media/app_icon_center.png" alt="App Icon" width="64" height="64" style="margin-right: 16px;" />

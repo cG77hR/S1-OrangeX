@@ -71,7 +71,7 @@ export class PreferencesWrapper implements ProxyHandler<ApplicationConfig> {
   /**
    * 只读访问配置项：不应在回调中修改ApplicationConfig，会导致配置项与存储的状态不同步
    */
-  async read (reader: (conf: ApplicationConfig) => void) {
+  async readonly (reader: (conf: ApplicationConfig) => void) {
     if (!this.initialized) {
       await this.initPromise
     }

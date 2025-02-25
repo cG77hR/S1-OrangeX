@@ -142,7 +142,7 @@ export async function logout() {
 }
 
 export async function accountInvalid() {
-  PreferenceManager.read(conf => {
+  PreferenceManager.readonly(conf => {
     if (conf.user_uid) {
       ShowToast({
         message: '当前登陆状态失效，请重新登录'
@@ -175,7 +175,7 @@ let restoreAccountPromise: Promise<void>
 
 function accountPromiseReset() {
   restoreAccountPromise = new Promise(resolve => restoreAccountFinished = async () => {
-    await PreferenceManager.read(async conf => {
+    await PreferenceManager.readonly(async conf => {
       await HistoryDbSetUser(conf.user_uid)
       await DraftDbSetUser(conf.user_uid)
       await BlockListSetUser(conf.user_uid)
@@ -190,7 +190,7 @@ accountPromiseReset()
 
 export function initAccountManager() {
   accountPromiseReset()
-  PreferenceManager.read((conf): Promise<void> => (async () => {
+  PreferenceManager.readonly((conf): Promise<void> => (async () => {
     if (conf.user_uid && conf.user_uid.length > 0) {
       const cookie = await queryAsset(cookieAssetAlias.get(conf.user_uid))
       const appToken = await queryAsset(appTokenAssetAlias.get(conf.user_uid))
@@ -223,7 +223,7 @@ async function dailySign() {
   // 可惜app签到在sid格式改了之后就不能用了
   const now = new Date()
   const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-  PreferenceManager.read(async conf => {
+  PreferenceManager.readonly(async conf => {
     const uidList = Object.keys(conf.account_list)
     for (const uid of uidList) {
       const user = conf.account_list[uid]

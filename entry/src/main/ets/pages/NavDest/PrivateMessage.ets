@@ -50,7 +50,7 @@ export struct PrivateMessageViewer {
     this.dateInterval = setInterval(() => {
       this.nowDate = new Date()
     }, 60000)
-    PreferenceManager.read(conf => {
+    PreferenceManager.readonly(conf => {
       this.uid = conf.user_uid
     })
   }

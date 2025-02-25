@@ -63,7 +63,7 @@ export struct DraftPage {
   }
 
   loadUser() {
-    PreferenceManager.read(async conf => {
+    PreferenceManager.readonly(async conf => {
       await DraftDbSetUser(conf.user_uid)
       this.draftCount = await this.dataSource.reload()
     })

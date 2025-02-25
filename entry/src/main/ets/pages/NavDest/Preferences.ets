@@ -50,7 +50,7 @@ export struct PreferencePage {
   aboutToAppear(): void {
     this.imageCacheUsage = ImageKnife.getInstance().getFileCache()?.currentMemory ?? 0
     getApiCacheState().then(v => this.apiCacheUsage = v)
-    PreferenceManager.read(conf => {
+    PreferenceManager.readonly(conf => {
       this.darkModeFollowSys = conf.dark_mode_follow_system
       this.showTopThread = conf.show_top_thread
       this.postSignature = conf.post_signature

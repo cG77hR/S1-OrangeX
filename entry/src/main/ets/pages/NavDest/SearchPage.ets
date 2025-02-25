@@ -218,7 +218,7 @@ struct SearchResultPage {
             }
             this.threadDataSource.reload(result)
           } else if (this.searchRequestType == SearchType.User || this.searchRequestType == SearchType.Friend) {
-            PreferenceManager.read(conf => {
+            PreferenceManager.readonly(conf => {
               let result: UserSearchResult
               if (this.searchRequestType == SearchType.Friend && this.directSearchUrl.includes(conf.user_uid)) {
                 result = extractSelfFriendResult(htmlStr)
