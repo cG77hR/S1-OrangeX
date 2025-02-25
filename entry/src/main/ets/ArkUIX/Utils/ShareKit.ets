@@ -5,7 +5,6 @@ import { BusinessError, pasteboard } from '@kit.BasicServicesKit'
 import { fileUri } from '@kit.CoreFileKit'
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo'
 import { BridgeFunction, getBridgeInstance } from '../BridgeFunction'
-import bridge from '@arkui-x.bridge'
 import { ShowToast } from './ShowToast'
 
 // ------------ ShareText -----------------

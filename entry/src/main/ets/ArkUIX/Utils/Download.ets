@@ -7,7 +7,6 @@ import { ShowToast } from './ShowToast'
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo'
 import { BridgeFunction, getBridgeInstance } from '../BridgeFunction'
 import hilog from '@ohos.hilog'
-import { CopyText } from './ShareKit'
 
 export async function DownloadFile(context: common.UIAbilityContext, filename: string, url: string) {
   const sandboxPath = context.cacheDir + '/' + filename

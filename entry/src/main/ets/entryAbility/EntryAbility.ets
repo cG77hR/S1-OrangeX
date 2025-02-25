@@ -15,7 +15,6 @@ import { PlatformInfo, PlatformTypeEnum } from '../ArkUIX/PlatformInfo';
 import { AssetStoreInit } from '../ArkUIX/Asset/AssetStore';
 import { BridgeFunction, getBridgeInstance } from '../ArkUIX/BridgeFunction';
 import bridge from '@arkui-x.bridge';
-import { ShowToast } from '../ArkUIX/Utils/ShowToast';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {

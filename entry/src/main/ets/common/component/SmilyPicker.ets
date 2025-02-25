@@ -4,7 +4,6 @@ import { ClickDarkenEffect, HeavyClickEffect } from '../Animation';
 import { BasicDataSource } from '../BasicDataSource';
 import { AppThemeColor } from '../theme/basic/basic';
 import { BottomSafeArea } from './BottomSafeArea';
-import { ImageSmily } from './ImageSmily';
 import { common } from '@kit.AbilityKit';
 import { readJson, writeJson } from '../dataStore/JsonPersist';
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage';

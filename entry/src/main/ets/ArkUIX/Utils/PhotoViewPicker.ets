@@ -1,9 +1,8 @@
-import { photoAccessHelper } from "@kit.MediaLibraryKit"
-import { BridgeFunction, getBridgeInstance } from "../BridgeFunction"
-import { PlatformInfo, PlatformTypeEnum } from "../PlatformInfo"
-import { ShowToast } from "./ShowToast"
-import Bridge from "@arkui-x.bridge"
-import uri from "@ohos.uri"
+import { photoAccessHelper } from '@kit.MediaLibraryKit'
+import { BridgeFunction, getBridgeInstance } from '../BridgeFunction'
+import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo'
+import { ShowToast } from './ShowToast'
+import uri from '@ohos.uri'
 
 export async function PhotoViewPicker(sizeLimit: number): Promise<string[]> {
   if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {

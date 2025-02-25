@@ -1,6 +1,5 @@
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo';
 import { promptAction, ShowToastOptions } from '@kit.ArkUI';
-import bridge from '@arkui-x.bridge';
 import { BridgeFunction, getBridgeInstance } from '../BridgeFunction';
 
 export function ShowToast(options: ShowToastOptions) {

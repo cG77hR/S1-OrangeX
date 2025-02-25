@@ -6,7 +6,6 @@ import { PreferenceState } from '../../pages/NavProvider/NavigationPage'
 import { FontSizeEnum } from '../fontSize/FontSizeEnum'
 import { ImageViewerTransitionToSize } from './ImageViewer'
 import { DomainRegex } from '../../api/base'
-import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export interface RectSize {
   w: number,
