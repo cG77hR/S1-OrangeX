@@ -3,29 +3,31 @@
 
 ### 项目状态：
 
-- **ArkUIX SDK14**: 🟢整体已完成移植，逻辑代码共通 🟡跨平台框架存在缺陷，导致部分功能体验不佳
+- **ArkUIX SDK14**: 
+  - 🟢整体已完成移植，逻辑代码共通 
+  - 🟡跨平台框架存在缺陷，导致部分功能体验不佳。见下文``缺陷备忘``
 
 #### 跨平台框架缺陷备忘
 
-| **功能**              | **SDK14** | **SDK16（未发布）** | **备注**                                                                     |
-|---------------------|-----------|----------------|----------------------------------------------------------------------------|
-| vp2px               | 🔴        |                | 并发线程内未定义，与鸿蒙平台运行时差异                                                        |
-| setTimeout          | 🔴        |                | 有时不触发更新，与鸿蒙平台运行时差异                                                         |
-| svg fill color      | 🔴        |                | [GitCode Issue #6](https://gitcode.com/arkui-x/arkui_for_android/issues/6) |
-| setcolormode        | 🔴        | 🟢             | 支持 since API16                                                             |
-| textarea 光标错误       | 🔴        |                | 光标显示异常                                                                     |
-| request.agent 下载403 | 🔴        |                | 403 下载错误                                                                   |
-| displaySync         | 🟡        |                | 需 Polyfill                                                                 |
-| navigation          | 🟡        |                | 不支持路由表（可绕过）                                                                |
-| rcp                 | 🟡        |                | 需 Polyfill                                                                 |
-| segment button      | 🟡        | 🟢             | 支持 since API16                                                             |
-| want                | 🟡        |                | 需 Polyfill                                                                 |
-| asset               | 🟡        |                | 需 Polyfill → SQLite                                                        |
-| clip board          | 🟡        |                | 需 Polyfill                                                                 |
-| share               | 🟡        |                | 需 Polyfill                                                                 |
-| toast               | 🟡        |                | 需 Polyfill                                                                 |
-| executeSync         | 🟡        |                | 多行错误（轻微）                                                                   |
-| fullscreen          | 🟡        |                | 与声称功能不一致（轻微）                                                               |
+| **功能或缺陷**                      | **SDK14** | **SDK16（未发布）** | **备注**                                                                                               |
+|--------------------------------|-----------|----------------|------------------------------------------------------------------------------------------------------|
+| 子线程中访问vp2px                    | 🔴        |                | 并发线程内未定义vp2px等全局api；hos中子线程可访问全局api<br/> - 导致需要修改依赖ImageKnife来使应用功能正常                                |
+| setTimeout闭包内更改状态变量，UI不刷新      | 🔴        |                | 偶发；hos中setTimeout闭包内可稳定刷新ui                                                                          |
+| textarea点按调整输入位置失效             | 🔴        |                | 表现为点按其它输入位置后，光标显示为移动到该位置，但实际输入位置仍为原先位置<br/> - 单行、多行文本框均有该缺陷，Search输入组件无该缺陷<br/> - 输入法方向键操作可按预期移动输入光标 |
+| request.agent不可下载需要header认证的资源 | 🔴        |                | ArkUI-X android桥接实现中，canMakeRequest方法会在发起下载请求前，**额外**发送一次不带header的请求，该请求响应码非200时，中止下载                |
+| Image组件svg图片的fillcolor失效       | 🔴        | 🟢             | 已在未来版本中修复[GitCode Issue #6](https://gitcode.com/arkui-x/arkui_for_android/issues/6)                  |
+| setColorMode跨平台                | 🔴        | 🟢             | 自 API16 支持                                                                                           |
+| displaySync                    | 🟡        |                | Polyfill 到 Animator                                                                                  |
+| navigation动态路由表                | 🟡        |                |                                                                                                      |
+| RemoteCommunicationKit.rcp     | 🟡        |                | Polyfill 到 http.HttpRequest                                                                          |
+| want.StartAbility              | 🟡        |                | 桥接到Android Intent                                                                                    |
+| asset kit                      | 🟡        |                | Polyfill 到 SQLite                                                                                    |
+| Clip Board                     | 🟡        |                | 需桥接                                                                                                  |
+| systemShare.ShareController    | 🟡        |                | 需桥接                                                                                                  |
+| promptAction.showToast文本背景缺失   | 🟡        |                | 桥接到Android来避免显示问题                                                                                    |
+| SegmentButton组件                | 🟡        | 🟢             | 自 API16 支持                                                                                           |
+
+具体平台差异代码见``entry/src/main/ets/ArkUIX``内
 
 ## （源仓库README)
 
