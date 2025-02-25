@@ -7,7 +7,7 @@ import { SwipePageLoadingIcon, SwipePageViewer } from '../../common/component/Sw
 import { OuterScroller } from '../../common/component/OuterScroller'
 import { TitleBar } from '../../common/component/TitleBar'
 import { common } from '@kit.AbilityKit'
-import { AppearDisappearAni, ClickDarkenEffect, HeavyClickEffect } from '../../common/Animation'
+import { AppearDisappearAni, ClickDarkenEffect, HeavyClickEffect, OpacityTransition } from '../../common/Animation'
 import { openThreadPost, ThreadPostParam } from '../NavDest/ThreadPostList'
 import { Event } from '../../common/Events'
 import { unescapeAll } from '../../common/XmlParser'
@@ -246,7 +246,7 @@ struct ThreadListPage {
   @Consume threadReadAccess: number
   @State threadList: ThreadListItemViewData[] = []
   @State dataLoading: boolean = false
-  @State threadNewReplyCount: Record<string, string> = {}
+  @State threadNewReplyCount: Map<string, string> = new Map
   @Consume(PropKey.pathStack) pathStack: NavPathStack
   loadingIcon?: SwipePageLoadingIcon
   @StorageProp(BLOCK_USER_LIST_STATE) blockList: Set<string> = new Set
@@ -275,7 +275,7 @@ struct ThreadListPage {
     }
     if (this.pageToLoad == 1) {
       let showTopList: boolean = true
-      await PreferenceManager.read(conf => showTopList = conf.show_top_thread)
+      await PreferenceManager.readonly(conf => showTopList = conf.show_top_thread)
       if (!showTopList) {
         v.Variables.forum_threadlist =
           v.Variables.forum_threadlist.filter(v => v.displayorder != ForumThreadDisplayOrder.top)
@@ -311,17 +311,26 @@ struct ThreadListPage {
     }
     this.loadingIcon?.hide(this.pageToLoad)
     this.dataLoading = false
-    this.threadNewReplyCount = {}
     QueryThreadReplyCount(v.Variables.forum_threadlist.map(v => parseInt(v.tid))).then(viewedThread => {
+      const threadWithReplyCount = new Set<string>()
       v.Variables.forum_threadlist.forEach(v => {
         if (viewedThread[v.tid]) {
           const replies = parseInt(v.replies) + 1 // v.replies没有计入主楼，而数据库记录的回帖数把主楼计入了，需要+1来匹配
           const newCount = replies - viewedThread[v.tid]
+          const newCountStr = newCount.toString()
           if (!isNaN(newCount) && newCount >= 0) {
-            this.threadNewReplyCount[v.tid] = newCount.toString()
+            if (this.threadNewReplyCount.get(v.tid) !== newCountStr) {
+              this.threadNewReplyCount.set(v.tid, newCountStr)
+            }
+            threadWithReplyCount.add(v.tid)
           }
         }
       })
+      for(const tid of this.threadNewReplyCount.keys()) {
+        if (!threadWithReplyCount.has(tid)) {
+          this.threadNewReplyCount.delete(tid)
+        }
+      }
     })
     return v
   }
@@ -368,9 +377,9 @@ struct ThreadListPage {
                 }
                 Span('   ' + threadInfo.item.replies)
                   .fontColor(this.appTheme.fontEmphasize)
-                if (this.threadNewReplyCount[threadInfo.item.tid]) {
-                  Span(` (+${this.threadNewReplyCount[threadInfo.item.tid]})`)
-                    .fontColor(this.appTheme.fontEmphasize)
+                if (this.threadNewReplyCount.has(threadInfo.item.tid)) {
+                  Span(` (+${this.threadNewReplyCount.get(threadInfo.item.tid)})`)
+                    .fontColor(this.appTheme.fontEmphasize).transition(OpacityTransition)
                 }
               }.fontSize(FontSizeEnum[this.appState.fontSize].vp16)
               .width('100%')
