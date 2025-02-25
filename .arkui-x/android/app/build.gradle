@@ -8,15 +8,20 @@ android {
     compileSdkVersion 33
     buildToolsVersion "30.0.3"
 
-//    def moduleJsonFile = file("$rootDir/app/src/main/assets/arkui-x/entry/module.json")
-//    def moduleJson = new JsonSlurper().parse(moduleJsonFile)
+    def moduleJsonFile = file("$rootDir/app/src/main/assets/arkui-x/entry/module.json")
 
     defaultConfig {
         applicationId "io.github.wly5556.s1orangeX"
         minSdkVersion 26
         targetSdkVersion 33
-//        versionCode moduleJson.app.versionCode as Integer
-//        versionName moduleJson.app.versionName.toString()
+        if (moduleJsonFile.exists()) {
+            def moduleJson = new JsonSlurper().parse(moduleJsonFile)
+            versionCode (moduleJson.app?.versionCode ?: 1) as Integer
+            versionName moduleJson.app?.versionName?.toString() ?: "1.0.0"
+        } else {
+            versionCode 1
+            versionName "1.0.0"
+        }
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
 
