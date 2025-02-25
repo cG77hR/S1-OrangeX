@@ -30,7 +30,6 @@ import { buildNavDestPage, PageNameEnum } from '../PageNameEnum'
 import { GotoThreadDialog } from '../../common/component/GotoThreadDialog'
 import { openUserGuide } from '../NavDest/UserGuide'
 import { PostSignature } from '../../common/PostSignature'
-import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { SetNightMode } from '../../ArkUIX/Utils/SetNightMode'
 

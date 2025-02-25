@@ -24,7 +24,6 @@ import {
 import { PostSignature } from '../../common/PostSignature'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
-import { getBridgeInstance } from '../../ArkUIX/BridgeFunction'
 import { SetNightMode } from '../../ArkUIX/Utils/SetNightMode'
 
 export interface PreferenceParam {}

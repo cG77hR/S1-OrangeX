@@ -4,7 +4,6 @@ import { Spring035s } from '../Animation';
 import { AppThemeColor } from '../theme/basic/basic';
 import { BottomSafeArea } from './BottomSafeArea';
 import { fileIo as fs } from '@kit.CoreFileKit';
-import { rcp } from '@kit.RemoteCommunicationKit';
 import { common } from '@kit.AbilityKit';
 import { extractFileName } from '../TextUtil';
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage';

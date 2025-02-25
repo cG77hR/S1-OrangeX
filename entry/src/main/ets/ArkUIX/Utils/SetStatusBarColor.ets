@@ -1,8 +1,7 @@
-import { common } from '@kit.AbilityKit'
-import { window } from '@kit.ArkUI'
-import { AppThemeColor } from '../../common/theme/basic/basic'
-import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo'
-import bridge from '@arkui-x.bridge';
+import { common } from '@kit.AbilityKit';
+import { window } from '@kit.ArkUI';
+import { AppThemeColor } from '../../common/theme/basic/basic';
+import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo';
 import { BridgeFunction, getBridgeInstance } from '../BridgeFunction';
 
 export function SetStatusBarColor(context: common.UIAbilityContext, theme: AppThemeColor) {

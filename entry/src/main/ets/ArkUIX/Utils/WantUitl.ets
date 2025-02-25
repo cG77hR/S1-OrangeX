@@ -3,7 +3,6 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { openUserSpaceByLink } from '../../pages/NavDest/UserSpace';
 import { openThreadPostByLink } from '../../pages/NavDest/ThreadPostList';
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo';
-import bridge from '@arkui-x.bridge';
 import { BridgeFunction, getBridgeInstance } from '../BridgeFunction';
 import { ShowToast } from './ShowToast';
 

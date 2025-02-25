@@ -1,7 +1,6 @@
-import { ApplicationConfig } from "../../config/v1/default";
-import { PlatformInfo, PlatformTypeEnum } from "../PlatformInfo";
-import { common, ConfigurationConstant } from "@kit.AbilityKit";
-import { BridgeFunction, getBridgeInstance } from "../BridgeFunction";
+import { ApplicationConfig } from '../../config/v1/default';
+import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo';
+import { common, ConfigurationConstant } from '@kit.AbilityKit';
 
 export function SetNightMode(conf: ApplicationConfig, context: common.ApplicationContext) {
   // TODO: ApplicationContext.setColorMode since api 16
