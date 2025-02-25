@@ -45,7 +45,7 @@ export struct FavoriteList {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.read(conf => {
+    PreferenceManager.readonly(conf => {
       this.uid = conf.user_uid
     })
   }

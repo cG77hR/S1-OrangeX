@@ -94,7 +94,7 @@ export struct ThreadListView {
   }
 
   loadReadAccess() {
-    PreferenceManager.read(conf => {
+    PreferenceManager.readonly(conf => {
       this.threadReadAccess = conf.readaccess
     })
   }

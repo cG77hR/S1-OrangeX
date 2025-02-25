@@ -41,7 +41,7 @@ export struct SideMenu {
   }
 
   updateState() {
-    PreferenceManager.read(conf => {
+    PreferenceManager.readonly(conf => {
       this.account_list = conf.account_list
       this.uidList = Object.keys(conf.account_list)
       this.currUsername = conf.user_name

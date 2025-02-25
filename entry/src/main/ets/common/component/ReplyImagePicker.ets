@@ -89,7 +89,7 @@ export struct ReplyImagePicker {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.read(conf => {
+    PreferenceManager.readonly(conf => {
       let imgService = conf.image_upload_service
       imgService = Math.min(this.uploaders.length - 1, Math.max(0, imgService))
       this.swiperIndex = this.uploaderCurrentIndex = imgService

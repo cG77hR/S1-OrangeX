@@ -212,7 +212,7 @@ export default class request<T> {
                   message: '论坛异常: ' + webApiData.Variables.error
                 })
               }
-              PreferenceManager.read(conf => {
+              PreferenceManager.readonly(conf => {
                 if (webApiData?.Variables && webApiData.Variables.member_uid != conf.user_uid) {
                   accountInvalid()
                 }

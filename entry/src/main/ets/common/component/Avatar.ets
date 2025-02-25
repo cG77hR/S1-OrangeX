@@ -51,7 +51,7 @@ export function initAvatarCacheState() {
         return
       }
       const data = Object.entries<CacheInfo>(file)
-      PreferenceManager.read(conf => {
+      PreferenceManager.readonly(conf => {
         const cacheTTL = AvatarTtlDay[conf.avatar_cache_ttl]
         const expireDate = Date.now() - cacheTTL * 24 * 60 * 60 * 1000
         const map = new Map<string, CacheInfo>(

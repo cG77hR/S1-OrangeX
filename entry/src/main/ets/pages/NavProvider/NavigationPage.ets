@@ -112,7 +112,7 @@ struct NavigationPage {
   }
 
   aboutToAppear(): void {
-    PreferenceManager.read(conf => {
+    PreferenceManager.readonly(conf => {
       this.appThemeWhenLightMode = ThemeArray[conf.theme]
       this.appState.textCopyable = conf.post_copyable
       this.appState.postAlphabetIndexer = conf.post_alphabet_indexer
@@ -149,7 +149,7 @@ struct NavigationPage {
       this.pathStack.clear()
     })
     this.context.eventHub.on(Event.LightModeThemeSwitched, () => {
-      PreferenceManager.read(conf => {
+      PreferenceManager.readonly(conf => {
         this.appThemeWhenLightMode = ThemeArray[conf.theme]
         this.onColorModeChange()
       })
