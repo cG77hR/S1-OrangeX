@@ -12,11 +12,12 @@
 | **功能或缺陷**                      | **SDK14** | **SDK16（未发布）** | **备注**                                                                                               |
 |--------------------------------|-----------|----------------|------------------------------------------------------------------------------------------------------|
 | 子线程中访问vp2px                    | 🔴        |                | 并发线程内未定义vp2px等全局api；hos中子线程可访问全局api<br/> - 导致需要修改依赖ImageKnife来使应用功能正常                                |
-| setTimeout闭包内更改状态变量，UI不刷新      | 🔴        |                | 偶发；hos中setTimeout闭包内可稳定刷新ui                                                                          |
+| setTimeout不传递delay时不会执行回调      | 🔴        |                | 预期应与delay为0等效                                                                                       |
 | textarea点按调整输入位置失效             | 🔴        |                | 表现为点按其它输入位置后，光标显示为移动到该位置，但实际输入位置仍为原先位置<br/> - 单行、多行文本框均有该缺陷，Search输入组件无该缺陷<br/> - 输入法方向键操作可按预期移动输入光标 |
 | request.agent不可下载需要header认证的资源 | 🔴        |                | ArkUI-X android桥接实现中，canMakeRequest方法会在发起下载请求前，**额外**发送一次不带header的请求，该请求响应码非200时，中止下载                |
+| 组件阴影绘制                         | 🔴        |                | 当前ArkUI-X所有组件都缺失阴影，shadow()接口也不起作用                                                                   |
 | Image组件svg图片的fillcolor失效       | 🔴        | 🟢             | 已在未来版本中修复[GitCode Issue #6](https://gitcode.com/arkui-x/arkui_for_android/issues/6)                  |
-| setColorMode跨平台                | 🔴        | 🟢             | 自 API16 支持                                                                                           |
+| setColorMode跨平台                | 🔴        | 🟢             | 处理深色模式所需。自 API16 支持                                                                                  |
 | displaySync                    | 🟡        |                | Polyfill 到 Animator                                                                                  |
 | navigation动态路由表                | 🟡        |                |                                                                                                      |
 | RemoteCommunicationKit.rcp     | 🟡        |                | Polyfill 到 http.HttpRequest                                                                          |
