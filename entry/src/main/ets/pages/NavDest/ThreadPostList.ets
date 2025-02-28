@@ -15,6 +15,7 @@ import { formatRelativeTime } from '../../common/TimeFormat'
 import { PageNameEnum } from '../PageNameEnum'
 import { BottomSafeArea } from '../../common/component/BottomSafeArea'
 import { AppThemeColor } from '../../common/theme/basic/basic'
+import { JSON } from '@kit.ArkTS'
 import { ImageViewer, ImageViewerParam } from '../../common/component/ImageViewer'
 import { openOrJumpTo } from '../SingletonPage'
 import { SwipePageLoadingIcon, SwipePageViewer } from '../../common/component/SwipePageViewer'
@@ -130,7 +131,7 @@ export struct ThreadPostList {
       }
       this.jumpToPageDone = true
     }
-    if (this.pageParam.jumpToPid && !this.jumpToPostDone) {
+    if (this.pageParam.jumpToPid && this.pageParam.jumpToPid != '0' && !this.jumpToPostDone) {
       this.jumpToPost = this.pageParam.jumpToPid
       this.jumpToPostDone = true
     }
@@ -397,7 +398,7 @@ struct SinglePostPage {
   @Consume pageScrollOffset: Map<number, number>
   @State isLoading: boolean = true
   postDataSource: ArrayDataSource<PostViewModel> = new ArrayDataSource()
-  postStringify: string [] = []
+  postStringify: Map<string, string> = new Map
   @State postHidden: Map<string, UIRootNode[]> = new Map
   @State postHiddenExpand: boolean[] = []
   @State postFloorNumber: string[] = []
@@ -530,7 +531,7 @@ struct SinglePostPage {
     let postArray: PostViewModel[] = []
     let rawPostList = v.data.list
     this.imgUrl = []
-    this.postStringify = []
+    this.postStringify.clear()
     parseXML(rawPostList).forEach((root, index) => {
       const post = PostContentParser(root, this.imgUrl)
       const vm: PostViewModel = {
@@ -542,9 +543,10 @@ struct SinglePostPage {
         userCredit: rawPostList[index].e ?
           '(' + (rawPostList[index].e >= 0 ? '+' : '') + rawPostList[index].e.toString() + ')' : '(+0)'
       }
-      this.postStringify.push(rawPostList[index].message)
+      this.postStringify.set(vm.pid, JSON.stringify(post.node))
       postArray.push(vm)
     })
+
     this.updatePostDatetime()
     for (let i = 0; i < rawPostList.length; i++) {
       const p = rawPostList[i]
@@ -555,9 +557,11 @@ struct SinglePostPage {
             this.pageParam.jumpToPidWithHighlight = false
           }, 100)
         }
-        this.scroller.scrollToIndex(i, false, ScrollAlign.START)
-        setTimeout((): void => this.scroller.scrollToIndex(i, false, ScrollAlign.START), 50)
-        this.jumpToPost = ''
+        setTimeout(() => {
+          this.scroller.scrollToIndex(i, false, ScrollAlign.START)
+          setTimeout((): void => this.scroller.scrollToIndex(i, false, ScrollAlign.START), 50)
+          this.jumpToPost = ''
+        }, 0)
       }
     }
 
@@ -955,7 +959,7 @@ struct SinglePostPage {
             .margin({ bottom: 8 })
           }
 
-        }, (post: PostViewModel, index: number) => this.postFloorNumber[index] + this.postStringify[index])
+        }, (post: PostViewModel, index: number) => this.postStringify.get(post.pid))
         ListItem() {
           BottomSafeArea()
         }
@@ -1066,6 +1070,7 @@ struct SinglePostPage {
       }
     }.width('100%')
     .height('100%')
+    .visibility(this.jumpToPost ? Visibility.Hidden : Visibility.Visible)
   }
 }
 
