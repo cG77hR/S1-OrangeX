@@ -111,6 +111,7 @@ export struct ThreadPostList {
   @Provide allowPullUpRefresh: boolean = false
   @Provide pageScrollOffset: Map<number, number> = new Map
   @State replyButtonExpand: boolean = false
+  @Provide contentVisible: boolean = true
   @StorageProp(SafeArea.bottom) bottomRectHeight: number = 0
   reloadCtrl: ReloadController = new ReloadController()
 
@@ -132,7 +133,8 @@ export struct ThreadPostList {
     }
     if (this.pageParam.jumpToPid && this.pageParam.jumpToPid != '0' && !this.jumpToPostDone) {
       this.jumpToPost = this.pageParam.jumpToPid
-      setTimeout(() => this.jumpToPost = '', 200) // 跳转完成前会隐藏帖文内容，若实际未能跳到该帖子也需要解除隐藏
+      this.contentVisible = false
+      setTimeout(() => this.contentVisible = true, 300) // 跳转完成前会隐藏帖文内容，若实际未能跳到该帖子也需要解除隐藏
       this.jumpToPostDone = true
     }
     if (this.pageParam.subject && this.pageParam.replies && this.pageParam.authorid === undefined) {
@@ -152,7 +154,7 @@ export struct ThreadPostList {
       pageToLoad: page,
       loadingIcon,
       scroller
-    })
+    }).visibility(this.contentVisible ? Visibility.Hidden : Visibility.Visible)
   }
 
   build() {
@@ -373,7 +375,7 @@ interface floorParam {
 @Component
 struct SinglePostPage {
   @Consume totalPage: number
-  @Consume('visiblePage') visiblePage: number
+  @Consume('visiblePage') @Watch('visiblePageChanged') visiblePage: number
   @State threadNotExist: boolean = false
   @Consume @Watch('requestPostData') dataControlCounter: number
   context = getContext(this) as common.UIAbilityContext
@@ -425,6 +427,7 @@ struct SinglePostPage {
   }
   @Provide postRatingInfo: Map<string, ThreadRatingInfo | undefined> = new Map
   @State postAttachment: Map<string, Attachment[]> = new Map
+  @Consume contentVisible: boolean
   pullUpStartOffset: number = 0
   pullUpLoadingTs: number = 0
 
@@ -433,6 +436,13 @@ struct SinglePostPage {
   }
 
   pageLoadedKey: string = ''
+
+  visiblePageChanged() {
+    if (this.scroller) {
+      const index = this.scroller.getItemIndex(0, this.scroller.currentOffset().yOffset)
+      this.recordViewHistory(index)
+    }
+  }
 
   loadingBegin() {
     if (this.showBottomLoading == 0) {
@@ -561,7 +571,8 @@ struct SinglePostPage {
           this.scroller.scrollToIndex(i, false, ScrollAlign.START)
           setTimeout((): void => this.scroller.scrollToIndex(i, false, ScrollAlign.START), 50)
           this.jumpToPost = ''
-        }, 0)
+          this.contentVisible = true
+        }, 10)
       }
     }
 
@@ -641,6 +652,14 @@ struct SinglePostPage {
     if ((data.result as WriteReplyPopData)?.replied) {
       this.dataControlCounter += 1
       this.updatePostDatetime()
+    }
+  }
+
+  recordViewHistory(postIndex: number) {
+    if (this.visiblePage == this.pageToLoad && this.isLoading == false && this.pageParam.authorid === undefined &&
+    this.pageParam.subject && this.pageParam.replies) {
+      RecordThreadViewHistory(this.pageParam.tid, this.pageParam.subject, this.pidMap[postIndex], Date.now(),
+        this.pageParam.replies, this.pageToLoad)
     }
   }
 
@@ -977,11 +996,7 @@ struct SinglePostPage {
       .opacity(this.isLoading ? 0.8 : 1)
       .edgeEffect(EdgeEffect.None)
       .onScrollVisibleContentChange((start: VisibleListContentInfo, end: VisibleListContentInfo) => {
-        if (this.visiblePage == this.pageToLoad && this.isLoading == false && this.pageParam.authorid === undefined &&
-        this.pageParam.subject && this.pageParam.replies) {
-          RecordThreadViewHistory(this.pageParam.tid, this.pageParam.subject, this.pidMap[start.index], Date.now(),
-            this.pageParam.replies, this.pageToLoad)
-        }
+        this.recordViewHistory(start.index)
       })
       .onTouch(this.pageToLoad == this.totalPage ? (event => {
         let newLoadingState = 0
@@ -1070,7 +1085,6 @@ struct SinglePostPage {
       }
     }.width('100%')
     .height('100%')
-    .visibility(this.jumpToPost ? Visibility.Hidden : Visibility.Visible)
   }
 }
 
