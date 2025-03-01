@@ -56,6 +56,12 @@ public class EntryEntryAbilityActivity extends StageActivity {
         super.onCreate(savedInstanceState);
     }
 
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        bridge = new Bridge(this, "Bridge", getBridgeManager());
+    }
+
     public static final int PICK_IMAGES_REQUEST_CODE = 1001;
 
     @Override
