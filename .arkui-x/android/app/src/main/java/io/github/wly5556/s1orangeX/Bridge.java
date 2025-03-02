@@ -46,7 +46,15 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
 
     private Context context;
 
-    public Bridge(Context context, String name, BridgeManager bridgeManager) {
+    private static Bridge instance;
+    public static Bridge getInstance(Context context, BridgeManager bridgeManager) {
+        if (instance == null || !instance.isBridgeAvailable() || context != instance.context) {
+            instance = new Bridge(context, "Bridge", bridgeManager);
+        }
+        return instance;
+    }
+
+    private Bridge(Context context, String name, BridgeManager bridgeManager) {
         super(context, name, bridgeManager);
         this.name = name;
         this.context = context;
