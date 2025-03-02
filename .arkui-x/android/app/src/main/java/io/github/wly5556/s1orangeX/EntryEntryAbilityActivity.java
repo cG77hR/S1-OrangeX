@@ -28,7 +28,10 @@ import ohos.stage.ability.adapter.StageActivity;
  * to build android library</a>
  */
 public class EntryEntryAbilityActivity extends StageActivity {
-    private Bridge bridge;
+
+    private Bridge getBridge() {
+        return Bridge.getInstance(this, getBridgeManager());
+    }
 
     @Override
     protected void onDestroy() {
@@ -39,27 +42,20 @@ public class EntryEntryAbilityActivity extends StageActivity {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         int currentNightMode = newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        bridge.callMethod("UiModeChanged", currentNightMode == Configuration.UI_MODE_NIGHT_YES);
+        getBridge().callMethod("UiModeChanged", currentNightMode == Configuration.UI_MODE_NIGHT_YES);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        bridge = new Bridge(this, "Bridge", getBridgeManager());
         View rootView = findViewById(android.R.id.content);
         rootView.setOnApplyWindowInsetsListener((v, insets) -> {
             int statusBarInset = insets.getSystemWindowInsetTop();
             int navigationBarInset = insets.getSystemWindowInsetBottom();
-            bridge.callMethod("WindowInsetsListener", statusBarInset, navigationBarInset);
+            getBridge().callMethod("WindowInsetsListener", statusBarInset, navigationBarInset);
             return insets;
         });
         setInstanceName("io.github.wly5556.s1orangeX:entry:EntryAbility:");
         super.onCreate(savedInstanceState);
-    }
-
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        bridge = new Bridge(this, "Bridge", getBridgeManager());
     }
 
     public static final int PICK_IMAGES_REQUEST_CODE = 1001;
@@ -112,9 +108,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
                         }
                     }
                     runOnUiThread(() -> {
-                        if (bridge != null) {
-                            bridge.callMethod("PhotoPickerResult", cachedPaths.toArray());
-                        }
+                        getBridge().callMethod("PhotoPickerResult", cachedPaths.toArray());
                     });
                 }).start();
             }
