@@ -120,7 +120,9 @@ struct NavigationPage {
       this.appState.fontSizeOverride = conf.font_size_override
       this.appState.hiddenPostDisplay = conf.hidden_post_display
       this.appState.splitMode = conf.split_mode
-      PostSignature.init(conf.post_signature, this.context.resourceManager.getStringSync($r('app.string.app_name').id))
+      PostSignature.init(conf.post_signature,
+        this.context.resourceManager.getStringSync($r('app.string.app_name').id),
+        conf.post_signature_device_info)
       SetNightMode(conf, this.context.getApplicationContext())
       if (conf.first_run) {
         PreferenceManager.modify(conf => {
@@ -133,8 +135,8 @@ struct NavigationPage {
         })
       }
       this.onColorModeChange()
-      const knife = ImageKnife.getInstance()
-      knife.initFileCache(this.context, 65536, ImageCacheSize[conf.image_cache_size] * 1024 * 1024)
+      ImageKnife.getInstance()
+        .initFileCache(this.context, 65536, ImageCacheSize[conf.image_cache_size] * 1024 * 1024)
         .then((): void => removeExpiredAvatar())
     })
     this.context.eventHub.on(Event.OpenLoginDialog, () => {
