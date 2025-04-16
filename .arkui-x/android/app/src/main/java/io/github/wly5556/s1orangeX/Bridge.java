@@ -210,9 +210,10 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         return type;
     }
 
+
     @Override
     public Object onMessage(Object o) {
-        return null;
+        return true;
     }
 
     @Override

@@ -42,7 +42,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         int currentNightMode = newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        getBridge().callMethod("UiModeChanged", currentNightMode == Configuration.UI_MODE_NIGHT_YES);
+        getBridge().callMethod("onUiModeChanged", currentNightMode == Configuration.UI_MODE_NIGHT_YES);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
         rootView.setOnApplyWindowInsetsListener((v, insets) -> {
             int statusBarInset = insets.getSystemWindowInsetTop();
             int navigationBarInset = insets.getSystemWindowInsetBottom();
-            getBridge().callMethod("WindowInsetsListener", statusBarInset, navigationBarInset);
+            getBridge().callMethod("onWindowInsetsListener", statusBarInset, navigationBarInset);
             return insets;
         });
         setInstanceName("io.github.wly5556.s1orangeX:entry:EntryAbility:");
@@ -108,7 +108,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
                         }
                     }
                     runOnUiThread(() -> {
-                        getBridge().callMethod("PhotoPickerResult", cachedPaths.toArray());
+                        getBridge().callMethod("onPhotoPickerResult", cachedPaths.toArray());
                     });
                 }).start();
             }

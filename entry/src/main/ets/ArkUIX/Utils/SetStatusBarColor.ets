@@ -2,7 +2,7 @@ import { common } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
 import { AppThemeColor } from '../../common/theme/basic/basic';
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo';
-import { BridgeFunction, getBridgeInstance } from '../BridgeFunction';
+import { PlatformBridge} from '../BridgeFunction';
 
 export function SetStatusBarColor(context: common.UIAbilityContext, theme: AppThemeColor) {
   window.getLastWindow(context).then((windowClass): void => {
@@ -13,7 +13,7 @@ export function SetStatusBarColor(context: common.UIAbilityContext, theme: AppTh
         statusBarContentColor: theme.titleBarFont?.toString()
       })
     } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
-      getBridgeInstance().callMethod(BridgeFunction.setWindowSystemBarProperties, !theme.isDark)
+      PlatformBridge.setWindowSystemBarProperties(!theme.isDark)
     }
   })
 }
