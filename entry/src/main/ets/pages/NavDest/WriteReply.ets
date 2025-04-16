@@ -27,7 +27,7 @@ import { PropKey, SafeArea } from '../../common/Constants'
 import { PostSignature } from '../../common/PostSignature'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
-import { BridgeFunction, getBridgeInstance } from '../../ArkUIX/BridgeFunction'
+import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
 
 export enum WriteReplyMode {
   NEW_THREAD,
@@ -227,7 +227,7 @@ export struct WriteReply {
       if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
         this.getUIContext().getFocusController().clearFocus()
       } else {
-        getBridgeInstance().callMethod(BridgeFunction.hideSoftKeyboard)
+        PlatformBridge.hideSoftKeyboard()
       }
     })
   }

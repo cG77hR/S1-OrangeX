@@ -3,7 +3,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { openUserSpaceByLink } from '../../pages/NavDest/UserSpace';
 import { openThreadPostByLink } from '../../pages/NavDest/ThreadPostList';
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo';
-import { BridgeFunction, getBridgeInstance } from '../BridgeFunction';
+import { PlatformBridge } from '../BridgeFunction';
 import { ShowToast } from './ShowToast';
 
 export function openInBrowser(abilityContext: common.UIAbilityContext, url?: string) {
@@ -21,8 +21,8 @@ export function openInBrowser(abilityContext: common.UIAbilityContext, url?: str
         message: '跳转失败'
       })
     })
-  } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID){
-    getBridgeInstance().callMethod(BridgeFunction.openInBrowser, url)
+  } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+    PlatformBridge.openInBrowser(url)
   }
 }
 

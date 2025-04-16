@@ -1,5 +1,5 @@
 import { photoAccessHelper } from '@kit.MediaLibraryKit'
-import { BridgeFunction, getBridgeInstance } from '../BridgeFunction'
+import { PlatformBridge } from '../BridgeFunction'
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo'
 import { ShowToast } from './ShowToast'
 import uri from '@ohos.uri'
@@ -22,17 +22,7 @@ export async function PhotoViewPicker(sizeLimit: number): Promise<string[]> {
       ShowToast({
         message: '文件最大' + sizeLimit + 'MB'
       })
-      const bridge = getBridgeInstance()
-      const callback = (...uris: string[]) => {
-        bridge.unRegisterMethod(BridgeFunction.PhotoPickerResult)
-        resolve(uris.map(u => new uri.URI(u).toString()))
-        return undefined
-      }
-      bridge.registerMethod({
-        name: BridgeFunction.PhotoPickerResult,
-        method: callback
-      })
-      bridge.callMethod(BridgeFunction.photoViewPicker)
+      PlatformBridge.photoViewPicker(uris => resolve(uris.map(u => new uri.URI(u).toString())))
     })
   }
 }

@@ -4,7 +4,7 @@ import { common } from '@kit.AbilityKit'
 import { BusinessError, pasteboard } from '@kit.BasicServicesKit'
 import { fileUri } from '@kit.CoreFileKit'
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo'
-import { BridgeFunction, getBridgeInstance } from '../BridgeFunction'
+import { PlatformBridge } from '../BridgeFunction'
 import { ShowToast } from './ShowToast'
 
 // ------------ ShareText -----------------
@@ -18,7 +18,7 @@ export function ShareText(text: string, context: common.UIAbilityContext) {
 }
 
 function ShareTextAndroid(text: string) {
-  getBridgeInstance().callMethod(BridgeFunction.shareText, text)
+  PlatformBridge.shareText(text)
 }
 
 function ShareTextLocal(text: string, context: common.UIAbilityContext) {
@@ -91,7 +91,7 @@ function writeToPasteboard(content: unifiedDataChannel.UnifiedRecord, toast: str
 }
 
 function writeToPasteboardAndroid(text: string) {
-  getBridgeInstance().callMethod(BridgeFunction.copyTextToClipboard, text)
+  PlatformBridge.copyTextToClipboard(text)
   ShowToast({
     message: '已复制'
   })

@@ -13,7 +13,7 @@ import { PropKey, SafeArea } from '../common/Constants';
 import { CacheDbInit } from '../common/dataStore/ApiCacheData';
 import { PlatformInfo, PlatformTypeEnum } from '../ArkUIX/PlatformInfo';
 import { AssetStoreInit } from '../ArkUIX/Asset/AssetStore';
-import { BridgeFunction, getBridgeInstance } from '../ArkUIX/BridgeFunction';
+import { PlatformBridge } from '../ArkUIX/BridgeFunction';
 import bridge from '@arkui-x.bridge';
 
 export default class EntryAbility extends UIAbility {
@@ -71,23 +71,16 @@ export default class EntryAbility extends UIAbility {
           console.error('Failed to set the window layout to full-screen mode. Cause:' + JSON.stringify(err));
         })
       } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
-        const bridge = getBridgeInstance()
-        bridge.registerMethod({
-          name: BridgeFunction.WindowInsetsListener,
-          method: (statusBarInset, navigationBarInset): bridge.ResultValue => {
-            AppStorage.setOrCreate(SafeArea.bottom, navigationBarInset)
-            AppStorage.setOrCreate(SafeArea.top, statusBarInset)
-            return;
-          }
+        PlatformBridge.onWindowInsetsListener((statusBarInset, navigationBarInset): bridge.ResultValue => {
+          AppStorage.setOrCreate(SafeArea.bottom, navigationBarInset)
+          AppStorage.setOrCreate(SafeArea.top, statusBarInset)
+          return 0
         })
-        bridge.registerMethod({
-          name: BridgeFunction.UiModeChanged,
-          method: (darkMode: boolean): bridge.ResultValue => {
-            AppStorage.setOrCreate(PropKey.currentColorMode,
-              darkMode ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK :
-              ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT)
-            return;
-          }
+        PlatformBridge.onUiModeChanged((darkMode: boolean): bridge.ResultValue => {
+          AppStorage.setOrCreate(PropKey.currentColorMode,
+            darkMode ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK :
+            ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT)
+          return 0
         })
       }
     })

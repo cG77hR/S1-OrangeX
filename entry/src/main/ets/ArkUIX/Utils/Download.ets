@@ -5,7 +5,7 @@ import { userCookieString } from '../../api/request'
 import { URL } from '../../api/base'
 import { ShowToast } from './ShowToast'
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo'
-import { BridgeFunction, getBridgeInstance } from '../BridgeFunction'
+import { PlatformBridge } from '../BridgeFunction'
 import hilog from '@ohos.hilog'
 
 export async function DownloadFile(context: common.UIAbilityContext, filename: string, url: string) {
@@ -57,9 +57,7 @@ export async function DownloadFile(context: common.UIAbilityContext, filename: s
           console.error(`Invoke documentViewPicker.save failed, code is ${err.code}, message is ${err.message}`)
         })
       } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
-        getBridgeInstance().callMethod(BridgeFunction.moveToExternalDownload,
-          sandboxPath,
-          filename)
+        PlatformBridge.moveToExternalDownload(sandboxPath, filename)
       }
     })
     task.on('failed', async (err) => {
