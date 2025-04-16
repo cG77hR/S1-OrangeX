@@ -29,6 +29,7 @@ import { openSplitModeShortcut } from '../NavDest/SplitModeShortcut'
 import { buildNavDestPage, PageNameEnum } from '../PageNameEnum'
 import { GotoThreadDialog } from '../../common/component/GotoThreadDialog'
 import { openUserGuide } from '../NavDest/UserGuide'
+import { promptAction } from '@kit.ArkUI'
 import { PostSignature } from '../../common/PostSignature'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { SetNightMode } from '../../ArkUIX/Utils/SetNightMode'
@@ -120,7 +121,9 @@ struct NavigationPage {
       this.appState.fontSizeOverride = conf.font_size_override
       this.appState.hiddenPostDisplay = conf.hidden_post_display
       this.appState.splitMode = conf.split_mode
-      PostSignature.init(conf.post_signature, this.context.resourceManager.getStringSync($r('app.string.app_name').id))
+      PostSignature.init(conf.post_signature,
+        this.context.resourceManager.getStringSync($r('app.string.app_name').id),
+        conf.post_signature_device_info)
       SetNightMode(conf, this.context.getApplicationContext())
       if (conf.first_run) {
         PreferenceManager.modify(conf => {
