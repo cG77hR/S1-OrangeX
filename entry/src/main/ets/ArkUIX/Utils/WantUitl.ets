@@ -5,6 +5,7 @@ import { openThreadPostByLink } from '../../pages/NavDest/ThreadPostList';
 import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo';
 import { PlatformBridge } from '../BridgeFunction';
 import { ShowToast } from './ShowToast';
+import { ObsoleteDomain } from '../../api/ObsoleteDomain';
 
 export function openInBrowser(abilityContext: common.UIAbilityContext, url?: string) {
   if (url == undefined) {
@@ -29,6 +30,7 @@ export function openInBrowser(abilityContext: common.UIAbilityContext, url?: str
 export function openS1LinkLike(href: string, pathStack: NavPathStack, context: common.UIAbilityContext,
   subject: string = '',
   replies: string = '1', fallbackToBrowser = true) {
+  href = ObsoleteDomain.replace(href)
   openUserSpaceByLink(href, pathStack, (): void =>
   openThreadPostByLink(href, pathStack, (): void => {
     if (fallbackToBrowser) {
