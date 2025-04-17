@@ -1,18 +1,24 @@
 import { OuterScroller } from '../../common/component/OuterScroller'
 import { TitleBar } from '../../common/component/TitleBar'
+import { ImageCachePref } from '../../common/component/preference/ImageCachePref'
 import { ImageKnife } from '@ohos/imageknife'
 import { clearAvatarCache } from '../../common/component/Avatar'
+import { AvatarCachePref } from '../../common/component/preference/AvatarCachePref'
 import { ThemeSelectPanel } from '../../common/component/preference/ThemeSelect'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { PreferenceManager } from '../../config/UserConfig'
 import { common, ConfigurationConstant } from '@kit.AbilityKit'
 import { PreferenceState } from '../NavProvider/NavigationPage'
+import { FontSizePref } from '../../common/component/preference/FontSizePref'
 import { FontSize, FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
-import { FontOverrideModeDesc } from '../../common/component/preference/ContentFontSizeOverridePref'
+import {
+  ContentFontSizeOverridePref,
+  FontOverrideModeDesc
+} from '../../common/component/preference/ContentFontSizeOverridePref'
 import { openOrJumpTo } from '../SingletonPage'
 import { PageNameEnum } from '../PageNameEnum'
 import { defaultApplicationConfig, FontSizeIndex } from '../../config/v1/default'
-import { HiddenPostDisplayModeDesc } from '../../common/component/preference/HiddenPostPref'
+import { HiddenPostDisplayModeDesc, HiddenPostPref } from '../../common/component/preference/HiddenPostPref'
 import { openSplitModeShortcut } from './SplitModeShortcut'
 import { PropKey } from '../../common/Constants'
 import {
@@ -105,8 +111,7 @@ export struct PreferencePage {
                     conf.dark_mode_follow_system = isOn
                     SetNightMode(conf, this.context.getApplicationContext())
                   })
-                }).enabled(PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) // TODO: api16可支持切换
-                  .opacity(PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS ? 1 : 0.6)
+                })
               }.attributeModifier(this.settingRow)
 
               Row() {
@@ -153,14 +158,14 @@ export struct PreferencePage {
               Row() {
                 Column({ space: SettingColumnSpace }) {
                   this.TextPrimary('字体大小')
-                  // FontSizePref()
+                  FontSizePref()
                 }.SettingColumn()
               }.attributeModifier(this.settingRow)
 
               Row() {
                 Column({ space: SettingColumnSpace }) {
                   this.TextPrimary('当帖文指定了字体大小')
-                  // ContentFontSizeOverridePref()
+                  ContentFontSizeOverridePref()
                   Text(FontOverrideModeDesc[this.appState.fontSizeOverride]).attributeModifier(this.textSecondary)
                 }.SettingColumn()
 
@@ -208,7 +213,7 @@ export struct PreferencePage {
               Row() {
                 Column({ space: SettingColumnSpace }) {
                   this.TextPrimary('尝试查看不可见内容')
-                  // HiddenPostPref()
+                  HiddenPostPref()
                   Text(HiddenPostDisplayModeDesc[this.appState.hiddenPostDisplay]).attributeModifier(this.textSecondary)
                 }.SettingColumn()
 
@@ -310,7 +315,7 @@ export struct PreferencePage {
                       .then(() => {
                         this.imageCacheUsage =
                           ImageKnife.getInstance().getFileCache().currentMemory
-                        ShowToast({
+                        this.getUIContext().getPromptAction().showToast({
                           message: '图片缓存已清空'
                         })
                       })
@@ -320,7 +325,7 @@ export struct PreferencePage {
               Row() {
                 Column({ space: SettingColumnSpace }) {
                   this.TextPrimary('允许图片缓存占用的存储空间')
-                  // ImageCachePref()
+                  ImageCachePref()
                 }.SettingColumn()
               }.attributeModifier(this.settingRow)
 
@@ -329,7 +334,7 @@ export struct PreferencePage {
                 Column({ space: SettingColumnSpace }) {
                   this.TextPrimary('头像缓存有效期')
                   Text('初次加载头像后，在缓存有效期间，不会再次通过网络更新头像').attributeModifier(this.textSecondary)
-                  // AvatarCachePref()
+                  AvatarCachePref()
                 }.SettingColumn()
               }.attributeModifier(this.settingRow)
 
