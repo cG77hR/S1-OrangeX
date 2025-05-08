@@ -1,4 +1,3 @@
-import { SegmentButton, SegmentButtonIconTextItem, SegmentButtonItemTuple, SegmentButtonOptions } from '@kit.ArkUI'
 import { PreferenceManager } from '../../../config/UserConfig'
 import { FontSizeIndex } from '../../../config/v1/default'
 import { PreferenceState } from '../../../pages/NavProvider/NavigationPage'
@@ -14,35 +13,30 @@ FontSizeName[FontSizeIndex.xl] = '更大'
 @Component
 export struct FontSizePref {
   @Consume appState: PreferenceState
-  @State fontSizeOption: SegmentButtonOptions = SegmentButtonOptions.capsule({
-    buttons: FontSizeName.map(v => ({ text: v } as SegmentButtonIconTextItem)) as SegmentButtonItemTuple,
-    multiply: false,
-    fontSize: FontSizeEnum[this.appState.fontSize].vp16,
-    selectedFontSize: FontSizeEnum[this.appState.fontSize].vp16,
-    backgroundBlurStyle: BlurStyle.BACKGROUND_THICK
-  })
-  @State @Watch('selectedChanged') fontSizeSelected: FontSizeIndex[] = []
+  @State @Watch('selectedChanged') fontSizeSelected: FontSizeIndex = FontSizeIndex.medium
 
   selectedChanged() {
     PreferenceManager.modify(conf => {
-      this.fontSizeSelected.forEach(v => {
-        conf.font_size = v
-        this.appState.fontSize = v
-        this.fontSizeOption.fontSize = this.fontSizeOption.selectedFontSize = FontSizeEnum[this.appState.fontSize].vp16
-      })
+      conf.font_size = this.fontSizeSelected
+      this.appState.fontSize = this.fontSizeSelected
     })
   }
 
   aboutToAppear(): void {
     PreferenceManager.readonly(conf => {
-      this.fontSizeSelected.push(conf.font_size)
+      this.fontSizeSelected = conf.font_size
     })
   }
 
   build() {
-    SegmentButton({
-      options: this.fontSizeOption,
-      selectedIndexes: $fontSizeSelected
-    })
+    Select(FontSizeName.map(value => {
+      const option: SelectOption = {
+        value
+      }
+      return option
+    })).font({
+      size: FontSizeEnum[this.appState.fontSize].vp16
+    }).selected($$this.fontSizeSelected)
+      .value(FontSizeName[this.fontSizeSelected])
   }
 }
