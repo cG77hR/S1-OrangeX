@@ -9,31 +9,36 @@
 
 #### 跨平台框架相关备忘
 
-| **功能或缺陷**                      | **SDK14** | **SDK16（未发布）** | **备注**                                                                                               |
-|--------------------------------|-----------|----------------|------------------------------------------------------------------------------------------------------|
-| 子线程中无法访问vp2px                  | 🔴        |                | 并发线程内未定义vp2px等全局api；hos中子线程可访问全局api                                                                  |
-| 导入@kit.ArkTS.JSON使得JSON变为未定义   | 🔴        |                | 不导入时，JSON方法是正常可用的，与预期一致；但若import了JSON模块，则会导致JSON变为未定义                                                |
-| setTimeout不传递delay时不会执行回调      | 🔴        |                | 预期应与delay为0等效                                                                                        |
-| textarea点按调整输入位置失效             | 🔴        |                | 表现为点按其它输入位置后，光标显示为移动到该位置，但实际输入位置仍为原先位置<br/> - 单行、多行文本框均有该缺陷，Search输入组件无该缺陷<br/> - 输入法方向键操作可按预期移动输入光标 |
-| request.agent不可下载需要header认证的资源 | 🔴        |                | ArkUI-X android桥接实现中，canMakeRequest方法会在发起下载请求前，**额外**发送一次不带header的请求，该请求响应码非200时，中止下载                |
-| 组件阴影绘制                         | 🔴        |                | 当前ArkUI-X所有组件都缺失阴影，shadow()接口也不起作用                                                                   |
-| Text组件首字符为emoji时，数字样式怪异        | 🔴        |                | 数字变为emoji一般的样式（但也不是keycap-digit系列emoji），图见下文                                                         |
-| Image组件svg图片的fillcolor失效       | 🔴        | 🟢             | 已在未来版本中修复[GitCode Issue #6](https://gitcode.com/arkui-x/arkui_for_android/issues/6)                  |
-| setColorMode跨平台                | 🔴        | 🟢             | 处理深色模式所需。自 API16 支持                                                                                  |
-| displaySync                    | 🟡        |                | Polyfill 到 Animator                                                                                  |
-| navigation动态路由表                | 🟡        |                | 修改代码，退回到@Builder内提供子页面内容的模式                                                                          |
-| RemoteCommunicationKit.rcp     | 🟡        |                | Polyfill 到 http.HttpRequest                                                                          |
-| want.StartAbility              | 🟡        |                | 桥接到Android Intent                                                                                    |
-| asset kit                      | 🟡        |                | Polyfill 到 SQLite                                                                                    |
-| Clip Board                     | 🟡        |                | 需桥接                                                                                                  |
-| systemShare.ShareController    | 🟡        |                | 需桥接                                                                                                  |
-| promptAction.showToast文本背景缺失   | 🟡        |                | 桥接到Android来避免显示问题                                                                                    |
-| SegmentButton组件                | 🟡        | 🟢             | 自 API16 支持                                                                                           |
+| **功能或缺陷**                      | **SDK14** | **SDK16** | **备注**                                                                                               |
+|--------------------------------|-----------|-----------|------------------------------------------------------------------------------------------------------|
+| 子线程中无法访问vp2px                  | 🔴        | 🔴        | 并发线程内未定义vp2px等全局api；hos中子线程可访问全局api                                                                  |
+| 导入@kit.ArkTS.JSON使得JSON变为未定义   | 🔴        | 🟢        | 不导入时，JSON方法是正常可用的，与预期一致；但若import了JSON模块(`@kit.ArkTS`)，则会导致JSON变为未定义                                  |
+| setTimeout不传递delay时不会执行回调      | 🔴        | 🔴        | 预期应与delay为0等效                                                                                        |
+| textarea点按调整输入位置失效             | 🔴        | 🟢        | 表现为点按其它输入位置后，光标显示为移动到该位置，但实际输入位置仍为原先位置<br/> - 单行、多行文本框均有该缺陷，Search输入组件无该缺陷<br/> - 输入法方向键操作可按预期移动输入光标 |
+| request.agent不可下载需要header认证的资源 | 🔴        | 🔴        | ArkUI-X android桥接实现中，canMakeRequest方法会在发起下载请求前，**额外**发送一次不带header的请求，该请求响应码非200时，中止下载                |
+| 组件阴影绘制                         | 🔴        | 🟢        | 当前ArkUI-X所有组件都缺失阴影，shadow()接口也不起作用                                                                   |
+| Text组件首字符为emoji时，数字样式怪异        | 🔴        | 🔴        | 数字变为emoji一般的样式（但也不是keycap-digit系列emoji），图见下文                                                         |
+| Image组件svg图片的fillcolor失效       | 🔴        | 🟢        | 已在未来版本中修复[GitCode Issue #6](https://gitcode.com/arkui-x/arkui_for_android/issues/6)                  |
+| setColorMode跨平台                | 🔴        | 🟢        | 处理深色模式所需。自 API16 支持                                                                                  |
+| displaySync                    | 🟡        | 🟡        | Polyfill 到 Animator                                                                                  |
+| navigation动态路由表                | 🟡        |           | 修改代码，退回到@Builder内提供子页面内容的模式                                                                          |
+| RemoteCommunicationKit.rcp     | 🟡        | 🟡        | Polyfill 到 http.HttpRequest                                                                          |
+| want.StartAbility              | 🟡        | 🟡        | 桥接到Android Intent                                                                                    |
+| asset kit                      | 🟡        | 🟡        | Polyfill 到 SQLite                                                                                    |
+| Clip Board                     | 🟡        | 🟡        | 需桥接                                                                                                  |
+| systemShare.ShareController    | 🟡        | 🟡        | 需桥接                                                                                                  |
+| promptAction.showToast文字背景白色缺失 | 🟡        | 🟢        | 桥接到Android来避免显示问题                                                                                    |
+| SegmentButton组件                | 🟡        | 🟡        | 未被支持                                                                                                 |
+
+🔴：问题不可绕过
+🟡：问题可绕过
+🟢：已解决
+空白：暂未测试
 
 具体平台差异代码见``entry/src/main/ets/ArkUIX``
 
 ##### 1. 子线程中访问vp2px
-在项目依赖``ImageKnife``中发现，该图像库使用子线程加载图像，其中用了vp2px将组件vp大小换算成像素大小  
+在项目依赖``ImageKnife``中发现，该图像库使用TaskPool线程加载图像，其中用了vp2px将组件vp大小换算成像素大小  
 _解决方案:_ 从主线程传递vp与px的比例，具体修改见[commit/5c0a7d4](https://gitee.com/rI6tL9/ImageKnife/commit/5c0a7d4a3db947a8b3a40af0a305eba021fb9875)，故项目内没有直接使用ohpm上的``ImageKnife``，而是单独打包了修改过的库来使用。（``libs/ImageKnife3.2.0.har``）
 
 ##### 2. request.agent不可下载需要header认证的资源
