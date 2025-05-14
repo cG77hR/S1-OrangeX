@@ -3,7 +3,9 @@ import request from '../../api/request';
 import { Spring035s } from '../Animation';
 import { AppThemeColor } from '../theme/basic/basic';
 import { BottomSafeArea } from './BottomSafeArea';
+import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { fileIo as fs } from '@kit.CoreFileKit';
+import { rcp } from '@kit.RemoteCommunicationKit';
 import { common } from '@kit.AbilityKit';
 import { extractFileName } from '../TextUtil';
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage';
@@ -16,6 +18,7 @@ import { WriteHandler, WriteReplyMode } from '../../pages/NavDest/WriteReply';
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast';
 import { PhotoViewPicker } from '../../ArkUIX/Utils/PhotoViewPicker';
 import { MultipartForm } from '../../ArkUIX/Rcp/Rcp';
+import { TabBarSelector } from './TabBarSelector';
 
 const IMG_THUMBNAIL_HEIGHT = 150
 
@@ -56,9 +59,6 @@ export struct ReplyImagePicker {
   async upload(uris: string[]) {
     if (uris.length == 0) {
       return
-    }
-    for (const u of uris) {
-      console.warn('uris: ', u)
     }
     ShowToast({
       message: `正在上传，共${uris.length}张图片`
@@ -132,22 +132,15 @@ export struct ReplyImagePicker {
   build() {
     Scroll() {
       Column() {
-        Tabs({ barPosition: BarPosition.Start, index: this.uploaderCurrentIndex }) {
-          ForEach(this.uploaders, (item: Uploader, index: number) => {
-            TabContent() {
-            }.tabBar(SubTabBarStyle.of(item.getName())
-              .labelStyle({ selectedColor: this.appTheme.fontEmphasize })
-              .indicator({ color: '#00000000' })
-            )
-          })
-        }.onAnimationStart((index, target) => {
-          this.uploaderCurrentIndex = target
-          this.controller.changeIndex(target, true)
-          this.initUploader(target)
+        TabBarSelector({
+          names: this.uploaders.map(v => v.getName()),
+          index: this.uploaderCurrentIndex,
+          onAnimationStart: (index, target) => {
+            this.uploaderCurrentIndex = target
+            this.controller.changeIndex(target, true)
+            this.initUploader(target)
+          }
         })
-        .barMode(BarMode.Scrollable)
-        .scrollable(false)
-        .height('auto')
 
         Swiper(this.controller) {
           LazyForEach(this.uploadersDataSource, (_: void, upIndex: number) => {
