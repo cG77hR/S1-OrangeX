@@ -86,6 +86,10 @@ export default class EntryAbility extends UIAbility {
     })
   }
 
+  onDestroy(): void | Promise<void> {
+    PlatformBridge.release()
+  }
+
   onBackground(): void {
     saveAvatarCacheState()
   }
