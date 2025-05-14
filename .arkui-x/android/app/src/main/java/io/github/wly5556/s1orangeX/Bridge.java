@@ -42,21 +42,11 @@ import ohos.ace.adapter.capability.bridge.IMessageListener;
 import ohos.ace.adapter.capability.bridge.IMethodResult;
 
 public class Bridge extends BridgePlugin implements IMessageListener, IMethodResult {
-    private String name;
 
-    private Context context;
+    private final Context context;
 
-    private static Bridge instance;
-    public static Bridge getInstance(Context context, BridgeManager bridgeManager) {
-        if (instance == null || !instance.isBridgeAvailable() || context != instance.context) {
-            instance = new Bridge(context, "Bridge", bridgeManager);
-        }
-        return instance;
-    }
-
-    private Bridge(Context context, String name, BridgeManager bridgeManager) {
+    Bridge(Context context, String name, BridgeManager bridgeManager) {
         super(context, name, bridgeManager);
-        this.name = name;
         this.context = context;
         setMethodResultListener(this);
         setMessageListener(this);
