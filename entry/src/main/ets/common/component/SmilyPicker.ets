@@ -9,6 +9,7 @@ import { readJson, writeJson } from '../dataStore/JsonPersist';
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage';
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast';
 import { ImageSmilyLazy } from './ImageSmilyLazy';
+import { TabBarSelector } from './TabBarSelector';
 
 const SMILY_COL_NUM = 8
 
@@ -118,20 +119,13 @@ export struct SmilyPicker {
             .offset({ top: 100 })
             .zIndex(100)
         }
-        Tabs({ barPosition: BarPosition.Start, index: this.tabBarIndex }) {
-          ForEach(this.smilyGroup, (item: SmilyGroup, index: number) => {
-            TabContent() {
-            }.tabBar(SubTabBarStyle.of(item.name)
-              .labelStyle({ selectedColor: this.appTheme.fontEmphasize})
-              .indicator({ color: '#00000000' })
-            )
-          })
-        }.onAnimationStart((index, target) => {
-          this.controller.changeIndex(target, true)
+        TabBarSelector({
+          names: this.smilyGroup.map(v => v.name),
+          index: this.tabBarIndex,
+          onAnimationStart: (index, target) => {
+            this.controller.changeIndex(target, true)
+          }
         })
-        .barMode(BarMode.Scrollable)
-        .scrollable(false)
-        .height('auto')
         Swiper(this.controller) {
           LazyForEach(this.smilyGroupSource, (group: Smily[], groupIndex: number) => {
             Scroll() {
