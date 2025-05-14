@@ -1,6 +1,4 @@
 import bridge from '@arkui-x.bridge';
-import { promptAction } from '@kit.ArkUI';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 
 enum BridgeFunction {
   openInBrowser = 'openInBrowser',
@@ -25,26 +23,21 @@ class PlatformBridgeClass {
   private registeredMethods:
     Map<BridgeFunction, Array<BridgeCallback>> = new Map
 
+  public release() {
+    if (this.bridgeImpl) {
+      this.registeredMethods.forEach((methods, functionName) => {
+        this.bridgeImpl!.unRegisterMethod(functionName)
+      })
+      this.bridgeImpl = undefined
+    }
+  }
+
   private async getImpl(): Promise<bridge.BridgeObject> {
     if (!this.bridgeImpl) {
       this.bridgeImpl = bridge.createBridge('Bridge')
-      return this.bridgeImpl
+      this.rebindListeners()
     }
-    return new Promise(resolve => {
-      this.bridgeImpl?.sendMessage('ping', (err, response) => {
-        console.warn('BridgePing', JSON.stringify(err))
-        if (err.code !== 0) {
-          this.bridgeImpl = bridge.createBridge('Bridge')
-          setTimeout(() => {
-            this.rebindListeners()
-            promptAction.showDialog({
-              message: "Recreate Bridge Instance(arkui)" + JSON.stringify(err)
-            })
-          }, 0)
-        }
-        resolve(this.bridgeImpl!)
-      })
-    })
+    return this.bridgeImpl
   }
 
   private rebindListeners() {
@@ -113,7 +106,7 @@ class PlatformBridgeClass {
       name: functionName,
       method: callback
     })
-    if(!this.registeredMethods.has(functionName)) {
+    if (!this.registeredMethods.has(functionName)) {
       this.registeredMethods.set(functionName, [])
     }
     this.registeredMethods.get(functionName)?.push(callback)
@@ -124,7 +117,7 @@ class PlatformBridgeClass {
   }
 
   async onUiModeChanged(callback: UiModeChangeListener) {
-    this.pushRegisterMethod(callback  as BridgeCallback, BridgeFunction.onUiModeChanged)
+    this.pushRegisterMethod(callback as BridgeCallback, BridgeFunction.onUiModeChanged)
   }
 }
 

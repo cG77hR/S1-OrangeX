@@ -2,6 +2,7 @@ package io.github.wly5556.s1orangeX;
 
 import android.app.Activity;
 import android.content.ClipData;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.net.Uri;
@@ -9,11 +10,13 @@ import android.os.Bundle;
 import android.view.View;
 import android.webkit.MimeTypeMap;
 import android.widget.Toast;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 
 import ohos.stage.ability.adapter.StageActivity;
@@ -29,8 +32,13 @@ import ohos.stage.ability.adapter.StageActivity;
  */
 public class EntryEntryAbilityActivity extends StageActivity {
 
-    private Bridge getBridge() {
-        return Bridge.getInstance(this, getBridgeManager());
+    private Bridge bridgeInstance = null;
+
+    private Bridge getBridgeInstance() {
+        if (bridgeInstance == null) {
+            bridgeInstance = new Bridge(this, "Bridge", getBridgeManager());
+        }
+        return bridgeInstance;
     }
 
     @Override
@@ -42,7 +50,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         int currentNightMode = newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        getBridge().callMethod("onUiModeChanged", currentNightMode == Configuration.UI_MODE_NIGHT_YES);
+        getBridgeInstance().callMethod("onUiModeChanged", currentNightMode == Configuration.UI_MODE_NIGHT_YES);
     }
 
     @Override
@@ -51,7 +59,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
         rootView.setOnApplyWindowInsetsListener((v, insets) -> {
             int statusBarInset = insets.getSystemWindowInsetTop();
             int navigationBarInset = insets.getSystemWindowInsetBottom();
-            getBridge().callMethod("onWindowInsetsListener", statusBarInset, navigationBarInset);
+            getBridgeInstance().callMethod("onWindowInsetsListener", statusBarInset, navigationBarInset);
             return insets;
         });
         setInstanceName("io.github.wly5556.s1orangeX:entry:EntryAbility:");
@@ -108,7 +116,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
                         }
                     }
                     runOnUiThread(() -> {
-                        getBridge().callMethod("onPhotoPickerResult", cachedPaths.toArray());
+                        getBridgeInstance().callMethod("onPhotoPickerResult", cachedPaths.toArray());
                     });
                 }).start();
             }
