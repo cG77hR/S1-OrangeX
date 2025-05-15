@@ -35,6 +35,7 @@ import { OpacityTransition } from '../../common/Animation'
 import { FoldMenu } from '../../common/component/FoldMenu'
 import BuildProfile from 'BuildProfile'
 import { LengthUnit } from '@ohos.arkui.node'
+import { clearSmilyImageCache } from '../../common/dataStore/SmilyCache'
 
 export interface PreferenceParam {}
 
@@ -363,6 +364,7 @@ export struct PreferencePage {
                   .opacity(this.imageCacheUsage > 0 ? 1 : 0.7)
                   .onClick(() => {
                     clearAvatarCache()
+                    clearSmilyImageCache()
                     ImageKnife.getInstance()
                       .removeAllFileCache()
                       .then(() => {
