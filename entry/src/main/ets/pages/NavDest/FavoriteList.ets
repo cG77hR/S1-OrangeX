@@ -22,6 +22,7 @@ import { PreferenceState } from '../NavProvider/NavigationPage'
 import { ReloadController } from '../../common/BasicDataSource'
 import { PropKey } from '../../common/Constants'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { LengthUnit } from '@kit.ArkUI'
 
 @Component
 export struct FavoriteList {
@@ -203,8 +204,17 @@ struct SingleFavPage {
             .textAlign(TextAlign.Start)
             .flexGrow(1)
             .flexShrink(1)
-            .fontSize(FontSizeEnum[this.appState.fontSize].vp18)
-            .padding(12)
+            .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+            .lineSpacing({
+              value: this.appState.contentLineSpace,
+              unit: LengthUnit.VP
+            })
+            .padding({
+              left: 18,
+              right: 18,
+              top: this.appState.threadItemGap,
+              bottom: this.appState.threadItemGap
+            })
         }
       }, (item: FavItemVM, compIndex: number) => item.id)
       BottomSafeArea()
