@@ -132,7 +132,7 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
     }
 
-    public void moveToExternalDownload(String path, String filename) {
+    public void copyToExternalDownload(String path, String filename) {
         File sourceFile = new File(path);
         if (!sourceFile.exists()) {
             return;
@@ -150,16 +150,13 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             if (fileUri == null) {
                 return;
             }
-
             try (OutputStream out = resolver.openOutputStream(fileUri);
                  InputStream in = Files.newInputStream(sourceFile.toPath())) {
-                byte[] buffer = new byte[1024];
+                byte[] buffer = new byte[4096];
                 int len;
                 while ((len = in.read(buffer)) >= 0) {
                     out.write(buffer, 0, len);
                 }
-                sourceFile.delete();
-                showToast("已保存到下载文件夹");
             } catch (IOException e) {
                 e.printStackTrace();
                 resolver.delete(fileUri, null, null);
@@ -174,17 +171,26 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             File destFile = new File(downloadsDir, filename);
             try (InputStream in = Files.newInputStream(sourceFile.toPath());
                  OutputStream out = new FileOutputStream(destFile)) {
-                byte[] buffer = new byte[1024];
+                byte[] buffer = new byte[4096];
                 int len;
                 while ((len = in.read(buffer)) > 0) {
                     out.write(buffer, 0, len);
                 }
-                sourceFile.delete();
-                showToast("已保存到下载文件夹");
                 MediaScannerConnection.scanFile(context, new String[]{destFile.getAbsolutePath()}, null, null);
             } catch (IOException e) {
                 showToast("保存文件时出现异常");
             }
+        }
+    }
+
+    public void moveToExternalDownload(String path, String filename) {
+        try {
+            copyToExternalDownload(path, filename);
+            File sourceFile = new File(path);
+            if (sourceFile.exists()) {
+                sourceFile.delete();
+            }
+        } catch (Exception ignored) {
         }
     }
 

@@ -9,13 +9,15 @@ import { SetStatusBarColor } from '../../ArkUIX/Utils/SetStatusBarColor'
 import { photoAccessHelper } from '@kit.MediaLibraryKit'
 import { ImageKnife } from '@ohos/imageknife'
 import { BusinessError } from '@kit.BasicServicesKit'
-import { extractFileExtension } from '../TextUtil'
+import { extractFileExtension, extractFileName } from '../TextUtil'
 import { fileIo } from '@kit.CoreFileKit'
 import { CopyHyperLink, ShareImage } from '../../ArkUIX/Utils/ShareKit'
 import { openInBrowser } from '../../ArkUIX/Utils/WantUitl'
 import { SafeArea } from '../Constants'
 import { DisplaySync } from '../../ArkUIX/DisplaySync/DisplaySync'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
+import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
 
 export interface ImageViewerParam {
   urls: string[],
@@ -129,45 +131,61 @@ export struct ImageViewer {
 
   @Builder
   imageSave() {
-    SaveButton({
-      text: SaveDescription.SAVE_TO_GALLERY
-    })
-      .height(48)
-      .width('100%')
-      .fontColor(this.appTheme.fontPrimary)
-      .backgroundColor(this.appTheme.backgroundPrimary)
-      .onClick(async (event: ClickEvent, result: SaveButtonOnClickResult) => {
-        if (result != SaveButtonOnClickResult.SUCCESS) {
-          return
-        }
-        const helper = photoAccessHelper.getPhotoAccessHelper(this.context);
-        try {
-          const imageUrl = this.param.urls[this.swiperIndex]
-          const fileExtname = extractFileExtension(imageUrl)
-          const saveToFile = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, fileExtname)
-          if (typeof saveToFile == 'string') {
-            const knife = ImageKnife.getInstance()
-            const cacheFilePath = await knife.preLoadCache(imageUrl)
-            const readFile = await fileIo.open(cacheFilePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE)
-            const writeFile = await fileIo.open(saveToFile, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE)
-            const buf = new ArrayBuffer(4096)
-            let fileSize = 0
-            let readByte = 0
-            while ((readByte = await fileIo.read(readFile.fd, buf)) > 0) {
-              await fileIo.write(writeFile.fd, buf)
-              fileSize += readByte
-            }
-            fileIo.close(readFile.fd)
-            fileIo.close(writeFile.fd)
-            ShowToast({
-              message: `保存成功, 文件大小${(fileSize / 1024 / 1024).toFixed(2)}MB`
-            })
-          }
-        } catch (error) {
-          const err: BusinessError = error as BusinessError;
-          console.error(`Failed to save photo. Code is ${err.code}, message is ${err.message}`);
-        }
+    if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+      SaveButton({
+        text: SaveDescription.SAVE_TO_GALLERY
       })
+        .height(48)
+        .width('100%')
+        .fontColor(this.appTheme.fontPrimary)
+        .backgroundColor(this.appTheme.backgroundPrimary)
+        .onClick(async (event: ClickEvent, result: SaveButtonOnClickResult) => {
+          if (result != SaveButtonOnClickResult.SUCCESS) {
+            return
+          }
+          const helper = photoAccessHelper.getPhotoAccessHelper(this.context);
+          try {
+            const imageUrl = this.param.urls[this.swiperIndex]
+            const fileExtname = extractFileExtension(imageUrl)
+            const saveToFile = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, fileExtname)
+            if (typeof saveToFile == 'string') {
+              const knife = ImageKnife.getInstance()
+              const cacheFilePath = await knife.preLoadCache(imageUrl)
+              const readFile = await fileIo.open(cacheFilePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE)
+              const writeFile = await fileIo.open(saveToFile, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE)
+              const buf = new ArrayBuffer(4096)
+              let fileSize = 0
+              let readByte = 0
+              while ((readByte = await fileIo.read(readFile.fd, buf)) > 0) {
+                await fileIo.write(writeFile.fd, buf)
+                fileSize += readByte
+              }
+              fileIo.close(readFile.fd)
+              fileIo.close(writeFile.fd)
+              ShowToast({
+                message: `保存成功, 文件大小${(fileSize / 1024 / 1024).toFixed(2)}MB`
+              })
+            }
+          } catch (error) {
+            const err: BusinessError = error as BusinessError;
+            console.error(`Failed to save photo. Code is ${err.code}, message is ${err.message}`);
+          }
+        })
+    } else {
+      Stack() {
+        this.menuItem('保存')
+      }.onClick(async () => {
+        const imageUrl = this.param.urls[this.swiperIndex]
+        const fileName = extractFileName(imageUrl)
+        const knife = ImageKnife.getInstance()
+        const cacheFilePath = await knife.preLoadCache(imageUrl)
+        const fileSize = (await fileIo.stat(cacheFilePath)).size
+        PlatformBridge.copyToExternalDownload(cacheFilePath, `${Math.floor(Date.now())}-${fileName}`)
+        ShowToast({
+          message: `保存成功, 文件大小${(fileSize / 1024 / 1024).toFixed(2)}MB`
+        })
+      })
+    }
   }
 
   @Builder

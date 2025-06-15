@@ -11,7 +11,8 @@ enum BridgeFunction {
   photoViewPicker = "photoViewPicker",
   onPhotoPickerResult = "onPhotoPickerResult",
   onUiModeChanged = "onUiModeChanged",
-  moveToExternalDownload = "moveToExternalDownload"
+  moveToExternalDownload = "moveToExternalDownload",
+  copyToExternalDownload = "copyToExternalDownload"
 }
 
 type BridgeCallback = (...parameters: bridge.Message[]) => bridge.ResultValue
@@ -98,6 +99,11 @@ class PlatformBridgeClass {
   async moveToExternalDownload(path: string, filename: string) {
     const impl = await this.getImpl()
     return impl.callMethod(BridgeFunction.moveToExternalDownload, path, filename)
+  }
+
+  async copyToExternalDownload(path: string, filename: string) {
+    const impl = await this.getImpl()
+    return impl.callMethod(BridgeFunction.copyToExternalDownload, path, filename)
   }
 
   private async pushRegisterMethod(callback: BridgeCallback, functionName: BridgeFunction) {
