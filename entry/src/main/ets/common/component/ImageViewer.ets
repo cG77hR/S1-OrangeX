@@ -97,8 +97,8 @@ export struct ImageViewer {
 
   showUpChanged() {
     if (this.showUp === false && this.imgCount > 0) {
-      SetStatusBarColor(this.context, this.appTheme)
       this.showStatusBar()
+      SetStatusBarColor(this.context, this.appTheme)
       this.imgTransform[this.swiperIndex].reset()
       // geometryTransition会将组件左上角对齐，但不会匹配大小
       // 还需要添加图片缩放退场动画
@@ -173,7 +173,7 @@ export struct ImageViewer {
         })
     } else {
       Stack() {
-        this.menuItem('保存')
+        this.menuItem('保存到图库')
       }.onClick(async () => {
         const imageUrl = this.param.urls[this.swiperIndex]
         const fileName = extractFileName(imageUrl)

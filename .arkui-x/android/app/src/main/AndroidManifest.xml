@@ -24,6 +24,15 @@
             </intent-filter>
         </activity>
         <meta-data android:name="force_dark_google" android:value="true" /> <!-- 禁用miui反色 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/shared_paths" />
+        </provider>
     </application>
 
 </manifest>
