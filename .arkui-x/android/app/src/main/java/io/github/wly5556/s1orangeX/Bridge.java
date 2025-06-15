@@ -2,19 +2,13 @@ package io.github.wly5556.s1orangeX;
 
 import static io.github.wly5556.s1orangeX.EntryEntryAbilityActivity.PICK_IMAGES_REQUEST_CODE;
 
-import android.annotation.SuppressLint;
-import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
-import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.res.Configuration;
-import android.database.Cursor;
 import android.graphics.Color;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
@@ -27,13 +21,17 @@ import android.view.inputmethod.InputMethodManager;
 import android.webkit.MimeTypeMap;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 
 import ohos.ace.adapter.ALog;
 import ohos.ace.adapter.capability.bridge.BridgeManager;
@@ -85,6 +83,39 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             context.startActivity(shareIntent);
         } catch (ActivityNotFoundException e) {
             ALog.w("ShareUtils", "No application can handle sharing");
+        }
+    }
+
+    public void shareImage(String path, String ext) {
+        File internalFile = new File(path);
+        if (!internalFile.exists()) {
+            return;
+        }
+        File externalCacheDir = context.getExternalCacheDir();
+        if (externalCacheDir == null) {
+            return;
+        }
+        File sharedFile = new File(externalCacheDir, internalFile.getName() + '.' + ext);
+
+        try {
+            try (FileChannel source = new FileInputStream(internalFile).getChannel();
+                 FileChannel destination = new FileOutputStream(sharedFile).getChannel()) {
+                destination.transferFrom(source, 0, source.size());
+            }
+
+            String authority = context.getPackageName() + ".fileprovider";
+            Uri contentUri = FileProvider.getUriForFile(context, authority, sharedFile);
+
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("image/*");
+            shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            context.startActivity(Intent.createChooser(shareIntent, "分享图片"));
+
+        } catch (IOException e) {
+            showToast("分享时出现异常");
         }
     }
 
@@ -150,13 +181,9 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             if (fileUri == null) {
                 return;
             }
-            try (OutputStream out = resolver.openOutputStream(fileUri);
-                 InputStream in = Files.newInputStream(sourceFile.toPath())) {
-                byte[] buffer = new byte[4096];
-                int len;
-                while ((len = in.read(buffer)) >= 0) {
-                    out.write(buffer, 0, len);
-                }
+            try (FileChannel inChannel = new FileInputStream(sourceFile).getChannel();
+                 FileChannel outChannel = ((FileOutputStream) resolver.openOutputStream(fileUri)).getChannel()) {
+                inChannel.transferTo(0, inChannel.size(), outChannel);
             } catch (IOException e) {
                 e.printStackTrace();
                 resolver.delete(fileUri, null, null);
@@ -169,13 +196,13 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             }
 
             File destFile = new File(downloadsDir, filename);
-            try (InputStream in = Files.newInputStream(sourceFile.toPath());
-                 OutputStream out = new FileOutputStream(destFile)) {
-                byte[] buffer = new byte[4096];
-                int len;
-                while ((len = in.read(buffer)) > 0) {
-                    out.write(buffer, 0, len);
-                }
+            try (FileChannel inChannel = FileChannel.open(sourceFile.toPath(), StandardOpenOption.READ);
+                 FileChannel outChannel = FileChannel.open(destFile.toPath(),
+                         StandardOpenOption.CREATE,
+                         StandardOpenOption.WRITE,
+                         StandardOpenOption.TRUNCATE_EXISTING)) {
+
+                inChannel.transferTo(0, inChannel.size(), outChannel);
                 MediaScannerConnection.scanFile(context, new String[]{destFile.getAbsolutePath()}, null, null);
             } catch (IOException e) {
                 showToast("保存文件时出现异常");

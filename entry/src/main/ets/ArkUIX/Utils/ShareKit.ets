@@ -26,21 +26,35 @@ function ShareTextLocal(text: string, context: common.UIAbilityContext) {
     utd: utd.UniformDataType.TEXT,
     content: text,
   })
-  SystemShare(shareData, context)
+  ShareLocalGeneral(shareData, context)
 }
 
 // ------------ ShareImage -----------------
 
 export function ShareImage(path: string, ext: string, context: common.UIAbilityContext) {
+  if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+    ShareImageLocal(path, ext, context)
+  } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+    ShareImageAndroid(path, ext)
+  }
+}
+
+function ShareImageAndroid(path: string, ext: string) {
+  PlatformBridge.shareImage(path, ext)
+}
+
+function ShareImageLocal(path: string, ext: string, context: common.UIAbilityContext) {
   const utdTypeId = utd.getUniformDataTypeByFilenameExtension(`.${ext}`, utd.UniformDataType.IMAGE);
   const shareData: systemShare.SharedData = new systemShare.SharedData({
     utd: utdTypeId,
     uri: fileUri.getUriFromPath(path)
   })
-  SystemShare(shareData, context)
+  ShareLocalGeneral(shareData, context)
 }
 
-function SystemShare(shareData: systemShare.SharedData, context: common.UIAbilityContext) {
+// -----------------------------
+
+function ShareLocalGeneral(shareData: systemShare.SharedData, context: common.UIAbilityContext) {
   const controller: systemShare.ShareController = new systemShare.ShareController(shareData)
   controller.show(context, {
     selectionMode: systemShare.SelectionMode.SINGLE,
