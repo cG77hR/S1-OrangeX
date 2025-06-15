@@ -5,6 +5,7 @@ enum BridgeFunction {
   copyTextToClipboard = "copyTextToClipboard",
   showToast = "showToast",
   shareText = "shareText",
+  shareImage = "shareImage",
   setWindowSystemBarProperties = "setWindowSystemBarProperties",
   onWindowInsetsListener = "onWindowInsetsListener",
   hideSoftKeyboard = "hideSoftKeyboard",
@@ -70,6 +71,11 @@ class PlatformBridgeClass {
   async shareText(text: string) {
     const impl = await this.getImpl()
     return impl.callMethod(BridgeFunction.shareText, text)
+  }
+
+  async shareImage(path: string, ext: string) {
+    const impl = await this.getImpl()
+    return impl.callMethod(BridgeFunction.shareImage, path, ext)
   }
 
   async setWindowSystemBarProperties(isDarkFont: boolean) {
