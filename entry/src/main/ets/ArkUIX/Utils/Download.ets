@@ -58,6 +58,10 @@ export async function DownloadFile(context: common.UIAbilityContext, filename: s
         })
       } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
         PlatformBridge.moveToExternalDownload(sandboxPath, filename)
+        ShowToast({
+          message: `${filename}下载完成`,
+          duration: 5000
+        })
       }
     })
     task.on('failed', async (err) => {

@@ -71,7 +71,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_IMAGES_REQUEST_CODE && resultCode == RESULT_OK) {
+        if (requestCode == PICK_IMAGES_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
             if (data != null) {
                 ArrayList<Uri> selectedImageUris = new ArrayList<>();
                 ClipData clipData = data.getClipData();
