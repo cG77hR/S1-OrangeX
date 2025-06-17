@@ -14,11 +14,12 @@ import { openUserGuide } from './UserGuide'
 import { openThreadPost, ThreadPostParam } from './ThreadPostList'
 import { CacheStrategy, ImageKnife } from '@ohos/imageknife'
 import { OpacityTransition } from '../../common/Animation'
-import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
 
 export interface AboutAppParam {}
 
-const RELEASE_BADGE = 'https://raster.shields.io/github/v/release/wly5556/S1-Orange?style=for-the-badge&label=' // image暂未支持svg text标签,只能用图片版本的
+const RELEASE_BADGE =
+  'https://raster.shields.io/github/v/release/wly5556/S1-Orange?style=for-the-badge&label=' // image暂未支持svg text标签,只能用图片版本的
 
 @Component
 export struct AboutApp {
@@ -40,6 +41,14 @@ export struct AboutApp {
     knife.removeMemoryCache(RELEASE_BADGE)
     if (badge) {
       this.releaseBadge = badge.source
+    }
+  }
+
+  getReleasePage() {
+    if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+      return 'https://github.com/cG77hR/S1-OrangeX/releases/'
+    } else {
+      return 'https://github.com/wly5556/S1-Orange/releases/'
     }
   }
 
@@ -90,10 +99,11 @@ export struct AboutApp {
                   Text($r('app.string.app_name'))
                     .fontSize(FontSizeEnum[this.appState.fontSize].vp20)
                     .fontWeight(FontWeight.Bold)
-                  Text(){
+                  Text() {
                     Span('当前版本 ')
                     Span(BuildProfile.VERSION_NAME).fontWeight(FontWeight.Bold)
                   }.fontSize(FontSizeEnum[this.appState.fontSize].vp16).opacity(.8)
+
                   Text('查看版本说明').fontSize(FontSizeEnum[this.appState.fontSize].vp14).opacity(.8)
                 }.alignItems(HorizontalAlign.End)
                 .height(80)
@@ -133,12 +143,13 @@ export struct AboutApp {
                 } else {
                   this.TextPrimary('正在获取最新版本...')
                 }
-              }.alignItems(VerticalAlign.Center)
+              }
+              .alignItems(VerticalAlign.Center)
               .justifyContent(FlexAlign.SpaceBetween)
               .attributeModifier(this.settingRow)
               .transition(OpacityTransition)
               .onClick(() => {
-                openInBrowser(this.context, 'https://github.com/wly5556/S1-Orange/releases')
+                openInBrowser(this.context, this.getReleasePage())
               })
             }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
 
@@ -214,40 +225,41 @@ export struct AboutApp {
 
             }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
 
-            SettingGroupHeader({
-              text: '构建',
-              fontSizeIndex: this.appState.fontSize
-            })
-            Column() {
-              Row() {
-                Column() {
-                  this.TextPrimary('本地最后提交哈希')
-                  Row() {
-                    // this.TextSecondary(BuildProfile.gitHeadHash)
-                  }.justifyContent(FlexAlign.End)
-                  .width('100%')
-                }.SettingColumn()
-              }.attributeModifier(this.settingRow)
 
-              Row() {
-                this.TextPrimary('本地最后提交于')
-                // this.TextSecondary(BuildProfile.gitHeadDate)
-              }.justifyContent(FlexAlign.SpaceBetween)
-              .attributeModifier(this.settingRow)
-
-              Divider()
-              Row() {
-                this.TextPrimary('软件包构建于')
-                // this.TextSecondary(BuildProfile.buildDate)
-              }.justifyContent(FlexAlign.SpaceBetween)
-              .attributeModifier(this.settingRow)
-              .onClick(() => {
-                ShowToast({
-                  message: '感谢你愿意动手构建并尝试本软件！   :)',
-                  duration: 5000
-                })
-              })
-            }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
+            // SettingGroupHeader({
+            //   text: '构建',
+            //   fontSizeIndex: this.appState.fontSize
+            // })
+            // Column() {
+            //   Row() {
+            //     Column() {
+            //       this.TextPrimary('本地最后提交哈希')
+            //       Row() {
+            //         this.TextSecondary(BuildProfile.gitHeadHash)
+            //       }.justifyContent(FlexAlign.End)
+            //       .width('100%')
+            //     }.SettingColumn()
+            //   }.attributeModifier(this.settingRow)
+            //
+            //   Row() {
+            //     this.TextPrimary('本地最后提交于')
+            //     this.TextSecondary(BuildProfile.gitHeadDate)
+            //   }.justifyContent(FlexAlign.SpaceBetween)
+            //   .attributeModifier(this.settingRow)
+            //
+            //   Divider()
+            //   Row() {
+            //     this.TextPrimary('软件包构建于')
+            //     this.TextSecondary(BuildProfile.buildDate)
+            //   }.justifyContent(FlexAlign.SpaceBetween)
+            //   .attributeModifier(this.settingRow)
+            //   .onClick(() => {
+            //     ShowToast({
+            //       message: '感谢你愿意动手构建并尝试本软件！   :)',
+            //       duration: 5000
+            //     })
+            //   })
+            // }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
 
             SettingGroupHeader({
               text: '第三方开源许可',
