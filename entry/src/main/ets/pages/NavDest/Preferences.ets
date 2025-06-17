@@ -29,7 +29,6 @@ import {
 } from '../../common/dataStore/ApiCacheData'
 import { PostSignature } from '../../common/PostSignature'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
-import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
 import { SetNightMode } from '../../ArkUIX/Utils/SetNightMode'
 import { OpacityTransition } from '../../common/Animation'
 import { FoldMenu } from '../../common/component/FoldMenu'
