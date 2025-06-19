@@ -18,6 +18,7 @@ import { PreferenceState } from '../NavProvider/NavigationPage'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PropKey } from '../../common/Constants'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { AniSpeed } from '../../common/Animation'
 
 export enum SearchType {
   Thread = 0,
@@ -254,7 +255,7 @@ struct SearchResultPage {
                       Span(textItem.text)
                         .fontColor(textItem.highlight ? HIGHLIGHT_FONT_COLOR : this.appTheme.fontEmphasize)
                     })
-                  }.fontSize(FontSizeEnum[this.appState.fontSize].vp18)
+                  }.fontSize(FontSizeEnum[this.appState.fontSize].vp16)
 
                   Text(item.dateTime).opacity(.7).fontSize(FontSizeEnum[this.appState.fontSize].vp15)
                     .padding({ bottom: 12 })
@@ -284,7 +285,7 @@ struct SearchResultPage {
               .padding(12)
             }.padding({ bottom: 1 })
             .backgroundColor(this.appTheme.backgroundTertiary)
-            .transition(TransitionEffect.OPACITY.animation({ duration: 100 }))
+            .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms100 }))
           }
         }, (item: ThreadSearchResult) => item.tid)
       } else if (this.searchRequestType == SearchType.User || this.searchRequestType == SearchType.Friend) {
@@ -320,7 +321,7 @@ struct SearchResultPage {
               })
             }.padding({ bottom: 1 })
             .backgroundColor(this.appTheme.backgroundTertiary)
-            .transition(TransitionEffect.OPACITY.animation({ duration: 100 }))
+            .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms100 }))
           }
         }, (item: UserSearchItem) => item.uid)
       }

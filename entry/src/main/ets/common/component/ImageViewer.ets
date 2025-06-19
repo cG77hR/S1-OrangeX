@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit'
-import { HeavyClickEffect, Spring035s } from '../Animation'
+import { AniSpeed, HeavyClickEffect, Spring035s } from '../Animation'
 import { ImageContainer, RectSize } from './ImageContainer'
 import { PageIndexDataSource } from './SwipePageViewer'
 import { AppThemeColor } from '../theme/basic/basic'
@@ -14,7 +14,6 @@ import { fileIo } from '@kit.CoreFileKit'
 import { CopyHyperLink, ShareImage } from '../../ArkUIX/Utils/ShareKit'
 import { openInBrowser } from '../../ArkUIX/Utils/WantUitl'
 import { SafeArea } from '../Constants'
-import { Queue } from '@kit.ArkTS'
 import { DisplaySync } from '../../ArkUIX/DisplaySync/DisplaySync'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
@@ -225,7 +224,7 @@ export struct ImageViewer {
       }.width('100%')
       .height('100%')
       .backgroundColor(Color.Black)
-      .transition(TransitionEffect.OPACITY.animation({ duration: 300 }))
+      .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms300 }))
 
       Swiper() {
         LazyForEach(this.dataSource, (pageIndex: number, compIndex: number) => {
