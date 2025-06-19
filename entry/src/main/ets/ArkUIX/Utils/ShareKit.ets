@@ -68,7 +68,7 @@ function ShareLocalGeneral(shareData: systemShare.SharedData, context: common.UI
 
 // ------------ CopyToClipBoard -----------------
 
-export function CopyText(text: string, UIContext: UIContext, toast?: string) {
+export function CopyText(text: string, toast?: string) {
   if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
     const plaintext = new unifiedDataChannel.PlainText()
     plaintext.textContent = text
