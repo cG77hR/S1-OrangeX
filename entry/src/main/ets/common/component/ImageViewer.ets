@@ -98,8 +98,7 @@ export struct ImageViewer {
 
   showUpChanged() {
     if (this.showUp === false && this.imgCount > 0) {
-      this.showStatusBar()
-      SetStatusBarColor(this.context, this.appTheme)
+      this.showStatusBar().then((): void => SetStatusBarColor(this.context, this.appTheme))
       this.imgTransform[this.swiperIndex].reset()
       // geometryTransition会将组件左上角对齐，但不会匹配大小
       // 还需要添加图片缩放退场动画
@@ -115,7 +114,7 @@ export struct ImageViewer {
   }
 
   showStatusBar() {
-    window.getLastWindow(this.context).then(w => {
+    return window.getLastWindow(this.context).then(w => {
       w.setSpecificSystemBarEnabled('status', true, true)
       w.setSpecificSystemBarEnabled('navigation', true, true)
       w.setSpecificSystemBarEnabled('navigationIndicator', true, true)
