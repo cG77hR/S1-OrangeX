@@ -2,21 +2,17 @@ package io.github.wly5556.s1orangeX;
 
 import android.app.Activity;
 import android.content.ClipData;
-import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.MimeTypeMap;
-import android.widget.Toast;
-import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 
 import ohos.stage.ability.adapter.StageActivity;
@@ -59,6 +55,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
         rootView.setOnApplyWindowInsetsListener((v, insets) -> {
             int statusBarInset = insets.getSystemWindowInsetTop();
             int navigationBarInset = insets.getSystemWindowInsetBottom();
+            getBridgeInstance().setWindowInset(statusBarInset, navigationBarInset);
             getBridgeInstance().callMethod("onWindowInsetsListener", statusBarInset, navigationBarInset);
             return insets;
         });

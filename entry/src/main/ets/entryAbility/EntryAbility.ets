@@ -73,15 +73,23 @@ export default class EntryAbility extends UIAbility {
           console.error('Failed to set the window layout to full-screen mode. Cause:' + JSON.stringify(err));
         })
       } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+        PlatformBridge.getWindowInset().then((v) : void => {
+          AppStorage.setOrCreate(SafeArea.top, v[0])
+          AppStorage.setOrCreate(SafeArea.bottom, v[1])
+        })
         PlatformBridge.onWindowInsetsListener((statusBarInset, navigationBarInset): bridge.ResultValue => {
-          AppStorage.setOrCreate(SafeArea.bottom, navigationBarInset)
           AppStorage.setOrCreate(SafeArea.top, statusBarInset)
+          AppStorage.setOrCreate(SafeArea.bottom, navigationBarInset)
           return 0
         })
         PlatformBridge.onUiModeChanged((darkMode: boolean): bridge.ResultValue => {
-          AppStorage.setOrCreate(PropKey.currentColorMode,
-            darkMode ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK :
-            ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT)
+          PreferenceManager.readonly(conf => {
+            if(conf.dark_mode_follow_system) {
+              AppStorage.setOrCreate(PropKey.currentColorMode,
+                darkMode ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK :
+                ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT)
+            }
+          })
           return 0
         })
       }
