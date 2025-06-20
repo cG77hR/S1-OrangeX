@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    compileSdkVersion 33
+    compileSdkVersion 35
     buildToolsVersion "30.0.3"
 
     def moduleJsonFile = file("$rootDir/app/src/main/assets/arkui-x/entry/module.json")
@@ -26,7 +26,7 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
 
         ndk {
-            abiFilters "arm64-v8a", "armeabi-v7a"
+            abiFilters "arm64-v8a"
         }
     }
 
@@ -48,18 +48,12 @@ android {
             jniLibs.srcDirs = ['libs']
         }
     }
-
-    splits {
-        abi {
-            enable true
-            reset()
-            include "armeabi-v7a", "arm64-v8a"
-            universalApk true
-        }
-    }
+    namespace 'io.github.wly5556.s1orangeX'
 }
 
 dependencies {
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-    implementation 'androidx.core:core:1.10.1'
+    implementation 'androidx.core:core:1.15.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
 }
