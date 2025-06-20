@@ -358,7 +358,7 @@ export struct ThreadPostList {
         param: this.imgViewer,
         showUp: this.imgViewerShow
       })
-    }.transition(TransitionEffect.opacity(.999).animation({ duration: AniSpeed.ms300 })) // 避免退出时没有转场动画就直接消失
+    }.transition(TransitionEffect.opacity(0)) // TODO: ArkUI-X内的geometryTransition效果跟ArkUI有区别，动画落点跟预期似乎与组件长宽成比例地偏离开。在找到原因之前，先隐藏这个转场。
   }
 }
 
