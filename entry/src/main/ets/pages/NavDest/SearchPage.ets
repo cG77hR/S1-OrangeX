@@ -285,7 +285,7 @@ struct SearchResultPage {
               .padding(12)
             }.padding({ bottom: 1 })
             .backgroundColor(this.appTheme.backgroundTertiary)
-            .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms100 }))
+            .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms120 }))
           }
         }, (item: ThreadSearchResult) => item.tid)
       } else if (this.searchRequestType == SearchType.User || this.searchRequestType == SearchType.Friend) {
@@ -321,7 +321,7 @@ struct SearchResultPage {
               })
             }.padding({ bottom: 1 })
             .backgroundColor(this.appTheme.backgroundTertiary)
-            .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms100 }))
+            .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms120 }))
           }
         }, (item: UserSearchItem) => item.uid)
       }

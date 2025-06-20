@@ -9,7 +9,7 @@ import {
   PollPopData,
   VotedUser
 } from '../../pages/NavDest/PollDetail'
-import { Spring035s } from '../Animation'
+import { SpringCurve } from '../Animation'
 import { AppThemeColor } from '../theme/basic/basic'
 import wrapper from '../../api/wrapper'
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage'
@@ -82,6 +82,7 @@ export struct PollPanel {
       pollInfo: this.pollInfo,
       transitionIndex: this.compTransitionId,
       expired: this.pollInfo.expirations * 1000 < Date.now(),
+      allowVote: this.pollInfo.allowvote == SpecialPollAllowVote.ALLOW,
       onSelected: (index: number, e: ClickEvent) => {
         const temp = JSON.parse(JSON.stringify(this.pollList)) as PollOptionVM[]
         if (this.pollInfo.allowvote == SpecialPollAllowVote.ALLOW) {
@@ -102,7 +103,7 @@ export interface PollPanelCompData {
   transitionIndex: string
   showVotedUser?: boolean
   onSelected: (index: number, e: ClickEvent) => void
-  voteAlready?: boolean
+  allowVote: boolean
   expired: boolean
 }
 
@@ -127,7 +128,7 @@ export function PollPanelComp(data: PollPanelCompData) {
     ForEach(data.pollList, (item: PollOptionVM, index: number) => {
       Column({ space: 8 }) {
         Row() {
-          if (!data.voteAlready && !data.expired) {
+          if (data.allowVote && !data.expired) {
             if (data.pollInfo.maxchoices == 1) {
               Stack() {
                 RadioButton(item.selected)
@@ -189,7 +190,7 @@ function RadioButton(selected: boolean) {
         .fill($r('sys.color.ohos_id_color_emphasize'))
         .transition(TransitionEffect.opacity(0.8).combine(TransitionEffect.scale({
           x: 0.8, y: 0.8
-        }).animation(Spring035s)))
+        }).animation(SpringCurve)))
     }
   }
   .width(16)

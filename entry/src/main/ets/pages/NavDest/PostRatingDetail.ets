@@ -5,8 +5,8 @@ import { AppThemeColor } from '../../common/theme/basic/basic'
 import { PageNameEnum } from '../PageNameEnum'
 import { openOrJumpTo } from '../SingletonPage'
 import { common } from '@kit.AbilityKit'
-import { POST_RATING_SLICE_SIZE, PostRatingPanel, Rating, requestRating } from '../../common/component/PostRating'
-import { HeavyClickEffect, Spring035s } from '../../common/Animation'
+import { PostRatingPanel, POST_RATING_SLICE_SIZE, Rating, requestRating } from '../../common/component/PostRating'
+import { HeavyClickEffect, SpringCurve } from '../../common/Animation'
 import { RoundPanel } from './Preferences'
 import request from '../../api/request'
 import { URL } from '../../api/base'
@@ -82,7 +82,7 @@ export struct PostRatingDetail {
   }
 
   popBack() {
-    animateTo(Spring035s, () => {
+    animateTo(SpringCurve, () => {
       this.pathStack.pop(this.popData, false)
     })
   }
@@ -115,7 +115,7 @@ export struct PostRatingDetail {
       this.ratingOptionErr = '载入评分功能时出现异常'
       return
     }
-    animateTo(Spring035s, () => this.ratingOptionErr = undefined)
+    animateTo(SpringCurve, () => this.ratingOptionErr = undefined)
     this.formData = formData
     this.ratingQuota = quota.quota
     this.ratingRangeText = quota.range
@@ -137,7 +137,7 @@ export struct PostRatingDetail {
 
   showRatingPanel() {
     this.loadRatingQuota()
-    animateTo(Spring035s, () => this.addRatingShow = true)
+    animateTo(SpringCurve, () => this.addRatingShow = true)
   }
 
   build() {
@@ -207,7 +207,7 @@ export struct PostRatingDetail {
 
                   Row() {
                     Button('取消', { buttonStyle: ButtonStyleMode.TEXTUAL }).onClick(() => {
-                      animateTo(Spring035s, () => this.addRatingShow = false)
+                      animateTo(SpringCurve, () => this.addRatingShow = false)
                     }).fontSize(FontSizeEnum[this.appState.fontSize].vp16)
                       .margin({ right: 10 })
                       .layoutWeight(1)
@@ -233,7 +233,7 @@ export struct PostRatingDetail {
                             })
                           }
                           this.reload()
-                          animateTo(Spring035s, () => this.addRatingShow = false)
+                          animateTo(SpringCurve, () => this.addRatingShow = false)
                         })
                       })
                   }.width('100%')
@@ -299,7 +299,7 @@ export function RegisterBuilder() {
 
 export function openPostRatingDetail(pathStack: NavPathStack, param: PostRatingDetailParam,
   popCallback: Callback<PopInfo>) {
-  animateTo(Spring035s, () => {
+  animateTo(SpringCurve, () => {
     openOrJumpTo(pathStack, PageNameEnum.PostRatingDetail, param, false,
       e => JSON.stringify(e) == JSON.stringify(param),
       popCallback)

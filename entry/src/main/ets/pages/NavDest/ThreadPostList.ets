@@ -10,7 +10,7 @@ import { RectSize } from '../../common/component/ImageContainer'
 import { Avatar } from '../../common/component/Avatar'
 import { common } from '@kit.AbilityKit'
 import { openUserSpace, UserSpaceParam } from './UserSpace'
-import { AniSpeed, HeavyClickEffect, Spring035s } from '../../common/Animation'
+import { AniSpeed, HeavyClickEffect, SpringCurve } from '../../common/Animation'
 import { formatRelativeTime } from '../../common/TimeFormat'
 import { PageNameEnum } from '../PageNameEnum'
 import { BottomSafeArea } from '../../common/component/BottomSafeArea'
@@ -260,7 +260,7 @@ export struct ThreadPostList {
           .shadow(ShadowStyle.OUTER_DEFAULT_MD)
           .transition(TransitionEffect.scale({
             x: 0, y: 0
-          }).combine(TransitionEffect.OPACITY).animation(Spring035s))
+          }).combine(TransitionEffect.OPACITY).animation(SpringCurve))
           .onClick(() => {
             animateTo({
               duration: AniSpeed.ms300,
@@ -307,14 +307,14 @@ export struct ThreadPostList {
             urls: imgUrl,
             startAt: index
           }
-          this.getUIContext().animateTo(Spring035s, () => {
+          this.getUIContext().animateTo(SpringCurve, () => {
             this.imgViewerShow = true
           })
         },)
     })
     .onShown(() => {
       if (this.replyButtonExpand) {
-        this.getUIContext().animateTo(Spring035s, () => {
+        this.getUIContext().animateTo(SpringCurve, () => {
           this.replyButtonExpand = false
         })
       }
@@ -324,7 +324,7 @@ export struct ThreadPostList {
     })
     .onBackPressed(() => {
       if (this.replyButtonExpand) {
-        this.getUIContext().animateTo(Spring035s, () => {
+        this.getUIContext().animateTo(SpringCurve, () => {
           this.replyButtonExpand = false
         })
         return true
@@ -614,7 +614,7 @@ struct SinglePostPage {
       }, 20)
     } else {
       setTimeout(() => {
-        animateTo(Spring035s, () => {
+        animateTo(SpringCurve, () => {
           this.showBottomLoading = 0
         })
       }, Math.max(0, PULL_UP_LOADING_INTERVAL - Date.now() + this.pullUpLoadingTs))
@@ -1077,7 +1077,7 @@ struct SinglePostPage {
               break
           }
         }
-        animateTo(Spring035s, () => this.showBottomLoading = newLoadingState)
+        animateTo(SpringCurve, () => this.showBottomLoading = newLoadingState)
       }) : () => {
       })
       .translate({ y: this.showBottomLoading * -BOTTOM_LOADING_AREA })
@@ -1128,7 +1128,7 @@ struct SinglePostPage {
         .justifyContent(FlexAlign.Center)
         .width('100%')
         .position({ top: '100%' })
-        .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms100 }))
+        .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms120 }))
         .translate({ y: this.showBottomLoading * -BOTTOM_LOADING_AREA })
       }
     }.width('100%')
