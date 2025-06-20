@@ -1,4 +1,5 @@
 import bridge from '@arkui-x.bridge';
+import { ConfigurationConstant } from '@kit.AbilityKit';
 
 enum BridgeFunction {
   openInBrowser = 'openInBrowser',
@@ -13,7 +14,10 @@ enum BridgeFunction {
   onPhotoPickerResult = "onPhotoPickerResult",
   onUiModeChanged = "onUiModeChanged",
   moveToExternalDownload = "moveToExternalDownload",
-  copyToExternalDownload = "copyToExternalDownload"
+  copyToExternalDownload = "copyToExternalDownload",
+  setNightMode = "setNightMode",
+  getSdkInt = "getSdkInt",
+  getWindowInset = "getWindowInset"
 }
 
 type BridgeCallback = (...parameters: bridge.Message[]) => bridge.ResultValue
@@ -110,6 +114,21 @@ class PlatformBridgeClass {
   async copyToExternalDownload(path: string, filename: string) {
     const impl = await this.getImpl()
     return impl.callMethod(BridgeFunction.copyToExternalDownload, path, filename)
+  }
+
+  async setNightMode(mode: ConfigurationConstant.ColorMode) {
+    const impl = await this.getImpl()
+    return impl.callMethod(BridgeFunction.setNightMode, mode)
+  }
+
+  async getSdkInt(): Promise<number> {
+    const impl = await this.getImpl()
+    return await impl.callMethod(BridgeFunction.getSdkInt) as number
+  }
+
+  async getWindowInset(): Promise<[number, number]> {
+    const impl = await this.getImpl()
+    return await impl.callMethod(BridgeFunction.getWindowInset) as [number, number]
   }
 
   private async pushRegisterMethod(callback: BridgeCallback, functionName: BridgeFunction) {

@@ -2,6 +2,7 @@ package io.github.wly5556.s1orangeX;
 
 import static io.github.wly5556.s1orangeX.EntryEntryAbilityActivity.PICK_IMAGES_REQUEST_CODE;
 
+import android.app.UiModeManager;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -27,11 +28,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
+import java.util.Map;
 
 import ohos.ace.adapter.ALog;
 import ohos.ace.adapter.capability.bridge.BridgeManager;
@@ -219,6 +219,38 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             }
         } catch (Exception ignored) {
         }
+    }
+
+    public void setNightMode(Integer mode) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Map<Integer, Integer> modeMap = new HashMap<>();
+            modeMap.put(-1, UiModeManager.MODE_NIGHT_AUTO);
+            modeMap.put(0, UiModeManager.MODE_NIGHT_YES);
+            modeMap.put(1, UiModeManager.MODE_NIGHT_NO);
+            if (modeMap.containsKey(mode)) {
+                UiModeManager uim = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
+                uim.setApplicationNightMode(modeMap.get(mode));
+            }
+        } else {
+            // ArkUI-X的StageActivity继承自Activity，而不是AppCompatActivity，是否有办法
+            // 使得AppCompatDelegate.setDefaultNightMode能正常起效？
+        }
+    }
+
+    private int statusBarInset;
+    private int navigationBarInset;
+
+    public void setWindowInset(int statusBarInset, int navigationBarInset) {
+        this.statusBarInset = statusBarInset;
+        this.navigationBarInset = navigationBarInset;
+    }
+
+    public int[] getWindowInset() {
+        return new int[]{statusBarInset, navigationBarInset};
+    }
+
+    public int getSdkInt() {
+        return Build.VERSION.SDK_INT;
     }
 
     private String getMimeType(String filename) {
