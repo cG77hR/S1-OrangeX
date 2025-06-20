@@ -11,7 +11,7 @@ import { blockKeywordList } from '../dataStore/BlockKeyword'
 import { FontSize, FontSizeEnum } from '../fontSize/FontSizeEnum'
 import { FontSizeIndex, FontSizeOverride } from '../../config/v1/default'
 import { generateImageViewerTransitionKey } from './ImageViewer'
-import { CopyText } from '../ShareKit'
+import { CopyText } from '../../ArkUIX/Utils/ShareKit'
 
 enum XMLNodeType {
   element = 'element',
