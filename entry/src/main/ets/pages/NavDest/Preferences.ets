@@ -35,6 +35,8 @@ import { FoldMenu } from '../../common/component/FoldMenu'
 import BuildProfile from 'BuildProfile'
 import { LengthUnit } from '@ohos.arkui.node'
 import { clearSmilyImageCache } from '../../common/dataStore/SmilyCache'
+import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
+import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
 
 export interface PreferenceParam {}
 
@@ -58,6 +60,7 @@ export struct PreferencePage {
   @State apiCacheUsage?: ApiCacheState = undefined
   @State postSignatureDisplayText: string = PostSignature.displayText()
   @State aniSpeedRatio: number = AniSpeed.ratio
+  @State warnDarkModeSwitch: boolean = false
 
   aboutToAppear(): void {
     this.imageCacheUsage = ImageKnife.getInstance().getFileCache()?.currentMemory ?? 0
@@ -68,6 +71,14 @@ export struct PreferencePage {
       this.postSignature = conf.post_signature
       this.postSignatureDeviceInfo = conf.post_signature_device_info
     })
+    if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+      PlatformBridge.getSdkInt().then(SDK_INT => {
+        SDK_INT = SDK_INT ?? 0
+        if (SDK_INT < 31) {
+          this.warnDarkModeSwitch = true
+        }
+      })
+    }
   }
 
   appStateChanged() {
@@ -129,6 +140,10 @@ export struct PreferencePage {
               Row() {
                 Column({ space: SettingColumnSpace }) {
                   this.TextPrimary('深色模式')
+                  if (this.warnDarkModeSwitch) {
+                    Text('提示：在Android 11及以下版本中，由于缺少相应接口辅助，不跟随系统切换的深浅色模式，界面颜色存在异常')
+                      .attributeModifier(this.textSecondary)
+                  }
                 }.SettingColumn()
 
                 Toggle({
