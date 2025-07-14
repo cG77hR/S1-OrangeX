@@ -118,7 +118,7 @@ export struct WriteReply {
   writeHandler: WriteHandler = new EmptyWriteHandler()
   @State threadTypeList: ThreadType[] = []
   @StorageProp(SafeArea.bottom) bottomRectHeight: number = 0
-  @State keyboardHeight: number = 0
+  @StorageProp(SafeArea.keyboard) @Watch('updateKeyboardExpendHeight') keyboardHeight: number = 0
   @State keyboardExpendHeight: number = 350
   @State showTools: boolean = false
   @StorageProp(PropKey.userId) @Watch('loadUser') uid?: string = undefined
@@ -139,6 +139,12 @@ export struct WriteReply {
   selectionStartRePos?: number = undefined
   selectionEndRePos?: number = undefined
 
+  updateKeyboardExpendHeight() {
+    if (this.keyboardHeight > 0) {
+      this.keyboardExpendHeight = this.keyboardHeight
+    }
+  }
+
   popBack() {
     if (!this.popped) {
       this.pathStack.pop(this.popData, this.pageParam.defaultTransition)
@@ -148,14 +154,7 @@ export struct WriteReply {
 
   aboutToAppear(): void {
     this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE)
-    window.getLastWindow(getContext(this)).then(currentWindow => {
-      currentWindow.on('keyboardHeightChange', (data: number) => {
-        this.keyboardHeight = px2vp(data)
-        if (this.keyboardHeight > 0) {
-          this.keyboardExpendHeight = this.keyboardHeight
-        }
-      })
-    })
+    this.updateKeyboardExpendHeight()
   }
 
   aboutToDisappear(): void {
@@ -612,7 +611,7 @@ export struct WriteReply {
           }
           .backgroundColor(this.appTheme.backgroundTertiary)
           .expandSafeArea([SafeAreaType.KEYBOARD, SafeAreaType.SYSTEM])
-          .height(this.showTools ? this.keyboardExpendHeight : this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : 0)
+          .height(this.showTools ? px2vp(this.keyboardExpendHeight) : this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : 0)
           .clip(true)
           .animation(SpringCurve)
           .width('100%')
