@@ -156,12 +156,10 @@ export struct WriteReply {
   }
 
   aboutToAppear(): void {
-    this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE)
     this.updateKeyboardExpendHeight()
   }
 
   aboutToDisappear(): void {
-    this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.OFFSET)
     if (!this.popData.replied) {
       if (!this.fieldToInput.equalsTo(this.initialFieldToInput)) {
         if (this.fieldToInput.equalsTo(new FieldToInput())) {
@@ -614,7 +612,7 @@ export struct WriteReply {
           }
           .backgroundColor(this.appTheme.backgroundTertiary)
           .expandSafeArea([SafeAreaType.KEYBOARD, SafeAreaType.SYSTEM])
-          .height(this.showTools ? px2vp(this.keyboardExpendHeight) : this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : 0)
+          .height(this.showTools ? px2vp(this.keyboardExpendHeight) : this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : px2vp(this.keyboardHeight))
           .clip(true)
           .animation(SpringCurve)
           .width('100%')
