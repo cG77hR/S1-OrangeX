@@ -9,6 +9,9 @@ import android.os.Bundle;
 import android.view.View;
 import android.webkit.MimeTypeMap;
 
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -52,11 +55,12 @@ public class EntryEntryAbilityActivity extends StageActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         View rootView = findViewById(android.R.id.content);
-        rootView.setOnApplyWindowInsetsListener((v, insets) -> {
-            int statusBarInset = insets.getSystemWindowInsetTop();
-            int navigationBarInset = insets.getSystemWindowInsetBottom();
-            getBridgeInstance().setWindowInset(statusBarInset, navigationBarInset);
-            getBridgeInstance().callMethod("onWindowInsetsListener", statusBarInset, navigationBarInset);
+        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
+            int statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            int navigationBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+            int keyboardHeight = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            getBridgeInstance().setWindowInset(statusBarHeight, navigationBarHeight, keyboardHeight);
+            getBridgeInstance().callMethod("onWindowInsetsListener", statusBarHeight, navigationBarHeight, keyboardHeight);
             return insets;
         });
         setInstanceName("io.github.wly5556.s1orangeX:entry:EntryAbility:");
