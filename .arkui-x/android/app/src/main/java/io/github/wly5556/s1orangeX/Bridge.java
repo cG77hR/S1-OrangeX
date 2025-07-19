@@ -2,6 +2,7 @@ package io.github.wly5556.s1orangeX;
 
 import static io.github.wly5556.s1orangeX.EntryEntryAbilityActivity.PICK_IMAGES_REQUEST_CODE;
 
+import android.app.Activity;
 import android.app.UiModeManager;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
@@ -23,6 +24,9 @@ import android.webkit.MimeTypeMap;
 import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -139,14 +143,9 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         if (!(context instanceof android.app.Activity)) {
             return;
         }
-        View currentFocus = ((android.app.Activity) context).getCurrentFocus();
-        if (currentFocus != null) {
-            InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
-            }
-        }
-
+        Activity activity = (Activity) context;
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(activity.getWindow(), activity.getWindow().getDecorView());
+        controller.hide(WindowInsetsCompat.Type.ime());
     }
 
     public void photoViewPicker() {
@@ -239,14 +238,16 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
 
     private int statusBarInset;
     private int navigationBarInset;
+    private int keyboardInset;
 
-    public void setWindowInset(int statusBarInset, int navigationBarInset) {
+    public void setWindowInset(int statusBarInset, int navigationBarInset, int keyboardInset) {
         this.statusBarInset = statusBarInset;
         this.navigationBarInset = navigationBarInset;
+        this.keyboardInset = keyboardInset;
     }
 
     public int[] getWindowInset() {
-        return new int[]{statusBarInset, navigationBarInset};
+        return new int[]{statusBarInset, navigationBarInset, keyboardInset};
     }
 
     public int getSdkInt() {

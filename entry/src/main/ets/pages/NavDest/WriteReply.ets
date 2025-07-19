@@ -92,6 +92,8 @@ export const TOOL_BAR_HEIGHT = 48
 const REPLY_MIN_INTERVAL = 1000 // ms
 const REPLY_NOTIFICATION_MAX_LENGTH = 100
 
+const TEXTAREA_ID = 'TEXTAREA_ID'
+
 interface PostFormatterBlock {
   img: ResourceStr
   name: string
@@ -140,6 +142,7 @@ export struct WriteReply {
   popped: boolean = false
   selection?: TextRange = undefined
   selectionRePos?: TextRange = undefined
+  selectionRePosWhenBlur?: TextRange = undefined
 
   updateKeyboardExpendHeight() {
     if (this.keyboardHeight > 0) {
@@ -236,10 +239,19 @@ export struct WriteReply {
     .attributeModifier(new ClickDarkenEffect)
     .clickEffect(HeavyClickEffect)
     .padding({ left: 40, right: 40 })
-    .onClick(e => {
+    .onClick(async e => {
       if (!this.showTools) {
         this.showTools = true
         this.toolPanelController.changeIndex(index, false)
+        if (PlatformInfo.getPlatform() != PlatformTypeEnum.HARMONYOS) {
+          const selection = dupTextRange(this.selection)
+          PlatformBridge.hideSoftKeyboard().then(() => {
+            // 隐藏android系统键盘会导致textarea blur，并清除选区，需要主动focus
+            // this.getUIContext().getFocusController().requestFocus 是同步focus方法，但不支持arkuix
+             // 只能等待blur后，再focus并恢复选区
+            this.selectionRePosWhenBlur = selection
+          })
+        }
       } else {
         this.toolPanelController.changeIndex(index, true)
       }
@@ -451,6 +463,7 @@ export struct WriteReply {
               controller: this.controller,
               placeholder: '写点内容吧...',
             })
+              .id(TEXTAREA_ID)
               .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
               .customKeyboard(this.showTools ? this.blankKeyboard() : undefined)
               .onClick(e => {
@@ -471,6 +484,17 @@ export struct WriteReply {
               .onTextSelectionChange((start, end) => {
                 this.selection = {
                   start, end
+                }
+              })
+              .onFocus(() => {
+                if(this.selectionRePosWhenBlur !== undefined) {
+                  this.controller.setTextSelection(this.selectionRePosWhenBlur.start, this.selectionRePosWhenBlur.end)
+                  this.selectionRePosWhenBlur = undefined
+                }
+              })
+              .onBlur(() => {
+                if (this.selectionRePosWhenBlur !== undefined) {
+                  focusControl.requestFocus(TEXTAREA_ID)
                 }
               })
               .lineSpacing({

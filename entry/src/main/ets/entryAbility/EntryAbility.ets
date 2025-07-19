@@ -78,10 +78,12 @@ export default class EntryAbility extends UIAbility {
         PlatformBridge.getWindowInset().then((v) : void => {
           AppStorage.setOrCreate(SafeArea.top, v[0])
           AppStorage.setOrCreate(SafeArea.bottom, v[1])
+          AppStorage.setOrCreate(SafeArea.keyboard, v[2])
         })
-        PlatformBridge.onWindowInsetsListener((statusBarInset, navigationBarInset): bridge.ResultValue => {
+        PlatformBridge.onWindowInsetsListener((statusBarInset, navigationBarInset, keyboardInset): bridge.ResultValue => {
           AppStorage.setOrCreate(SafeArea.top, statusBarInset)
           AppStorage.setOrCreate(SafeArea.bottom, navigationBarInset)
+          AppStorage.setOrCreate(SafeArea.keyboard, keyboardInset)
           return 0
         })
         PlatformBridge.onUiModeChanged((darkMode: boolean): bridge.ResultValue => {

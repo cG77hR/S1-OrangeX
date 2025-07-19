@@ -21,7 +21,7 @@ enum BridgeFunction {
 }
 
 type BridgeCallback = (...parameters: bridge.Message[]) => bridge.ResultValue
-type WindowInsetsListener = (statusBarInset: number, navigationBarInset: number) => bridge.ResultValue
+type WindowInsetsListener = (statusBarInset: number, navigationBarInset: number, keyboardInset: number) => bridge.ResultValue
 type UiModeChangeListener = (darkMode: boolean) => bridge.ResultValue
 
 class PlatformBridgeClass {
@@ -126,9 +126,9 @@ class PlatformBridgeClass {
     return await impl.callMethod(BridgeFunction.getSdkInt) as number
   }
 
-  async getWindowInset(): Promise<[number, number]> {
+  async getWindowInset(): Promise<[number, number, number]> {
     const impl = await this.getImpl()
-    return await impl.callMethod(BridgeFunction.getWindowInset) as [number, number]
+    return await impl.callMethod(BridgeFunction.getWindowInset) as [number, number, number]
   }
 
   private async pushRegisterMethod(callback: BridgeCallback, functionName: BridgeFunction) {
