@@ -6,6 +6,7 @@ import { PlatformInfo, PlatformTypeEnum } from '../PlatformInfo';
 import { PlatformBridge } from '../BridgeFunction';
 import { ShowToast } from './ShowToast';
 import { ObsoleteDomain } from '../../api/ObsoleteDomain';
+import { URL } from '../../api/base';
 
 export function openInBrowser(abilityContext: common.UIAbilityContext, url?: string) {
   if (url == undefined) {
@@ -42,4 +43,8 @@ export function openS1LinkLike(href: string, pathStack: NavPathStack, context: c
     }
   }, subject, replies
   ))
+}
+
+export function generateS1WebPostLink(tid: string, page: number) {
+  return `${URL.WEB_BASE}thread-${tid}-${page}-1.html`
 }
