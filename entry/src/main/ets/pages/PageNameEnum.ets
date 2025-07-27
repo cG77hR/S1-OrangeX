@@ -16,6 +16,7 @@ import { UserSpace } from './NavDest/UserSpace';
 import { UserThread } from './NavDest/UserThread';
 import { ViewHistory } from './NavDest/ViewHistory';
 import { WriteReply } from './NavDest/WriteReply';
+import { ReportPost } from './NavDest/ReportPost';
 
 /**
  * 页面名称。需要对应resources/base/profile/route_map.json内的name。
@@ -40,7 +41,8 @@ export enum PageNameEnum {
   BlockList = "BlockList",
   AboutApp = "AboutApp",
   SplitModeShortcut = "SplitModeShortcut",
-  UserGuide = "UserGuide"
+  UserGuide = "UserGuide",
+  ReportPost = "ReportPost"
 }
 
 @Builder
@@ -81,5 +83,7 @@ export function buildNavDestPage(name: string) {
     SplitModeShortcut()
   } else if (name == PageNameEnum.UserGuide) {
     UserGuide()
+  } else if (name == PageNameEnum.ReportPost) {
+    ReportPost()
   }
 }
