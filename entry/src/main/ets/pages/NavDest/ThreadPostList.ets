@@ -58,6 +58,7 @@ import { LengthUnit } from '@kit.ArkUI'
 import { PropKey, SafeArea } from '../../common/Constants'
 import { DownloadFile } from '../../ArkUIX/Utils/Download'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { openReportPost } from './ReportPost'
 
 interface PostViewModel {
   node: UIRootNode[]
