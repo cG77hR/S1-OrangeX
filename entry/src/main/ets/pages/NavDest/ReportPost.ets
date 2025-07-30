@@ -9,7 +9,7 @@ import { TitleBar } from "../../common/component/TitleBar"
 import { AppThemeColor } from "../../common/theme/basic/basic"
 import { PreferenceState } from "../NavProvider/NavigationPage"
 import { FontSizeEnum } from "../../common/fontSize/FontSizeEnum"
-import { generateS1WebPostLink } from "../../common/WantUitl"
+import { generateS1WebPostLink } from "../../ArkUIX/Utils/WantUitl"
 
 export interface ReportPostParam {
   rid: string
