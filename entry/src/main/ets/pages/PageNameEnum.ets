@@ -18,6 +18,7 @@ import { ViewHistory } from './NavDest/ViewHistory';
 import { WriteReply } from './NavDest/WriteReply';
 import { ReportPost } from './NavDest/ReportPost';
 import { DarkRoomPage } from './NavDest/DarkRoom';
+import { PageSearchPage } from './NavDest/ThreadPostSearch';
 
 /**
  * 页面名称。需要对应resources/base/profile/route_map.json内的name。
@@ -44,7 +45,8 @@ export enum PageNameEnum {
   SplitModeShortcut = "SplitModeShortcut",
   UserGuide = "UserGuide",
   ReportPost = "ReportPost",
-  DarkRoom = "DarkRoom"
+  DarkRoom = "DarkRoom",
+  PageSearch = "PageSearch"
 }
 
 @Builder
@@ -89,5 +91,7 @@ export function buildNavDestPage(name: string) {
     ReportPost()
   } else if (name == PageNameEnum.DarkRoom) {
     DarkRoomPage()
+  } else if (name == PageNameEnum.PageSearch) {
+    PageSearchPage()
   }
 }
