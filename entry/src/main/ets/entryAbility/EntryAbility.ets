@@ -16,6 +16,7 @@ import { PlatformInfo, PlatformTypeEnum } from '../ArkUIX/PlatformInfo';
 import { AssetStoreInit } from '../ArkUIX/Asset/AssetStore';
 import { PlatformBridge } from '../ArkUIX/BridgeFunction';
 import bridge from '@arkui-x.bridge';
+import { loadUserTags } from '../common/dataStore/UserTag';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -27,6 +28,7 @@ export default class EntryAbility extends UIAbility {
     SmilyImageCacheInit(this.context)
     initAccountManager()
     initJsonStorage(this.context.filesDir)
+    loadUserTags()
     AppStorage.setOrCreate(PropKey.currentColorMode, this.context.config.colorMode)
     if (want.uri) {
       this.wantWithUri(want.uri)

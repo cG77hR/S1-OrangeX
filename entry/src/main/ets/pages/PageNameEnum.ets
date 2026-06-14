@@ -19,6 +19,7 @@ import { WriteReply } from './NavDest/WriteReply';
 import { ReportPost } from './NavDest/ReportPost';
 import { DarkRoomPage } from './NavDest/DarkRoom';
 import { PageSearchPage } from './NavDest/ThreadPostSearch';
+import { LongScreenshotPage } from './NavDest/LongScreenshot';
 
 /**
  * 页面名称。需要对应resources/base/profile/route_map.json内的name。
@@ -46,7 +47,8 @@ export enum PageNameEnum {
   UserGuide = "UserGuide",
   ReportPost = "ReportPost",
   DarkRoom = "DarkRoom",
-  PageSearch = "PageSearch"
+  PageSearch = "PageSearch",
+  LongScreenshot = "LongScreenshot"
 }
 
 @Builder
@@ -93,5 +95,7 @@ export function buildNavDestPage(name: string) {
     DarkRoomPage()
   } else if (name == PageNameEnum.PageSearch) {
     PageSearchPage()
+  } else if (name == PageNameEnum.LongScreenshot) {
+    LongScreenshotPage()
   }
 }
