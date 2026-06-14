@@ -14,8 +14,8 @@ import { openUserGuide } from './UserGuide'
 import { openThreadPost, ThreadPostParam } from './ThreadPostList'
 import { CacheStrategy, ImageKnife } from '@ohos/imageknife'
 import { OpacityTransition } from '../../common/Animation'
-import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
 import { GITHUB_RELEASE_BADGE } from '../../api/base'
+import { getReleasePage } from '../../ArkUIX/Utils/ReleasePage'
 import {
   UpdateCheckIntervalDesc,
   UpdateCheckPref
@@ -46,14 +46,6 @@ export struct AboutApp {
     knife.removeMemoryCache(GITHUB_RELEASE_BADGE)
     if (badge) {
       this.releaseBadge = badge.source
-    }
-  }
-
-  getReleasePage() {
-    if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
-      return 'https://github.com/cG77hR/S1-OrangeX/releases/'
-    } else {
-      return 'https://github.com/wly5556/S1-Orange/releases/'
     }
   }
 
@@ -154,7 +146,7 @@ export struct AboutApp {
               .attributeModifier(this.settingRow)
               .transition(OpacityTransition)
               .onClick(() => {
-                openInBrowser(this.context, this.getReleasePage())
+                openInBrowser(this.context, getReleasePage())
               })
 
               Divider()

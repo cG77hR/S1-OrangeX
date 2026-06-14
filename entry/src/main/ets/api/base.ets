@@ -57,5 +57,6 @@ export enum URL {
 
 export const GITHUB_RELEASE_BADGE = 'https://raster.shields.io/github/v/release/wly5556/S1-Orange?style=for-the-badge&label='
 export const GITHUB_RELEASE_PAGE = 'https://github.com/wly5556/S1-Orange/releases'
+export const GITHUB_RELEASE_PAGE_ANDROID = 'https://github.com/cG77hR/S1-OrangeX/releases/'
 
 export const DomainRegex = new RegExp(`^https:\/\/(?:[^\/]*\.)?${URL.DOMAIN.replaceAll('.','\.')}(?:\/.*)?$`)

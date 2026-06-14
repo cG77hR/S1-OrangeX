@@ -7,7 +7,7 @@ import { GITHUB_RELEASE_BADGE } from '../api/base'
 import { Event } from './Events'
 import { openInBrowser } from '../ArkUIX/Utils/WantUitl'
 import { IRcpSession, Rcp } from '../ArkUIX/Rcp/Rcp'
-import { PlatformInfo, PlatformTypeEnum } from '../ArkUIX/PlatformInfo'
+import { getReleasePage } from '../ArkUIX/Utils/ReleasePage'
 
 /**
  * 应用版本检查
@@ -53,14 +53,6 @@ function intervalMs(interval: UpdateCheckInterval): number {
       return -1
     default:
       return 30 * DAY_MS
-  }
-}
-
-function getReleasePage(): string {
-  if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
-    return 'https://github.com/cG77hR/S1-OrangeX/releases/'
-  } else {
-    return 'https://github.com/wly5556/S1-Orange/releases'
   }
 }
 
