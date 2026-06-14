@@ -29,6 +29,7 @@ import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { PropKey } from '../../common/Constants'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { openDarkRoom } from './DarkRoom'
 
 
 @Component
@@ -87,7 +88,13 @@ export struct BlockListPage {
       OuterScroller() {
         TitleBar({
           titleContent: `黑名单`,
-          useRightMenu: false,
+          useRightMenu: true,
+          menu: [{
+            value: "小黑屋",
+            action: () => {
+              openDarkRoom(this.pathStack)
+            }
+          }],
           clickLeftButton: () => {
             this.popBack()
           }

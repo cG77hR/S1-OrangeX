@@ -15,11 +15,16 @@ import { openThreadPost, ThreadPostParam } from './ThreadPostList'
 import { CacheStrategy, ImageKnife } from '@ohos/imageknife'
 import { OpacityTransition } from '../../common/Animation'
 import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
+import { GITHUB_RELEASE_BADGE } from '../../api/base'
+import {
+  UpdateCheckIntervalDesc,
+  UpdateCheckPref
+} from '../../common/component/preference/UpdateCheckPref'
+
 
 export interface AboutAppParam {}
 
-const RELEASE_BADGE =
-  'https://raster.shields.io/github/v/release/wly5556/S1-Orange?style=for-the-badge&label=' // image暂未支持svg text标签,只能用图片版本的
+// badge 用图片版本：image 暂未支持 svg text 标签，只能用图片版本的
 
 @Component
 export struct AboutApp {
@@ -34,11 +39,11 @@ export struct AboutApp {
   async aboutToAppear() {
     const knife = ImageKnife.getInstance()
     await knife.preLoadCache({
-      loadSrc: RELEASE_BADGE,
+      loadSrc: GITHUB_RELEASE_BADGE,
       writeCacheStrategy: CacheStrategy.Memory
     })
-    const badge = await knife.getCacheImage(RELEASE_BADGE, CacheStrategy.Memory)
-    knife.removeMemoryCache(RELEASE_BADGE)
+    const badge = await knife.getCacheImage(GITHUB_RELEASE_BADGE, CacheStrategy.Memory)
+    knife.removeMemoryCache(GITHUB_RELEASE_BADGE)
     if (badge) {
       this.releaseBadge = badge.source
     }
@@ -151,6 +156,19 @@ export struct AboutApp {
               .onClick(() => {
                 openInBrowser(this.context, this.getReleasePage())
               })
+
+              Divider()
+              Row() {
+                Column({ space: 8 }) {
+                  Row() {
+                    this.TextPrimary('检查应用更新')
+                  }
+                  UpdateCheckPref()
+                  Text(UpdateCheckIntervalDesc[this.appState.updateCheckInterval])
+                    .fontColor($r('sys.color.font_secondary'))
+                    .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
+                }.SettingColumn()
+              }.attributeModifier(this.settingRow)
             }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
 
             SettingGroupHeader({
