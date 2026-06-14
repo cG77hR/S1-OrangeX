@@ -2,5 +2,8 @@
   "crossplatform": true,
   "modules": [
     "entry"
-  ]
+  ],
+//  "buildOption": {
+//    "ignoreCrossPlatform": true  // 新版本sdk的跨平台告警的办法，sdk 16还不支持。
+//  }
 }
