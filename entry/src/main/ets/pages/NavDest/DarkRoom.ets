@@ -78,7 +78,7 @@ class DarkRoomDataSource extends BasicDataSource<DarkRoomItem> {
   private async loadMore() {
     this.querying = true
     try {
-      const resp = await new request<string>(URL.WEB_BASE + URL.DARKROOM)
+      const resp = await new request<string>(URL.DARKROOM, URL.WEB_BASE)
         .param('cid', this.nextCid)
         .toText()
         .get()
