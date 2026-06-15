@@ -1,3 +1,4 @@
+import { SegmentButton, SegmentButtonIconTextItem, SegmentButtonItemTuple, SegmentButtonOptions } from '@kit.ArkUI'
 import { PreferenceManager } from '../../../config/UserConfig'
 import { UpdateCheckInterval } from '../../../config/v1/default'
 import { PreferenceState } from '../../../pages/NavProvider/NavigationPage'
@@ -16,31 +17,40 @@ UpdateCheckIntervalDesc[UpdateCheckInterval.never] = '不自动检查应用更�
 
 @Component
 export struct UpdateCheckPref {
-  @Consume appState: PreferenceState
-  @State @Watch('selectedChanged') updateCheckSelected: UpdateCheckInterval = UpdateCheckInterval.monthly
+  @Consume @Watch('stateChanged') appState: PreferenceState
+
+  stateChanged() {
+    this.segmentOption.fontSize = this.segmentOption.selectedFontSize = FontSizeEnum[this.appState.fontSize].vp16
+  }
+
+  @State segmentOption: SegmentButtonOptions = SegmentButtonOptions.capsule({
+    buttons: UpdateCheckIntervalText.map(v => ({ text: v } as SegmentButtonIconTextItem)) as SegmentButtonItemTuple,
+    multiply: false,
+    fontSize: FontSizeEnum[this.appState.fontSize].vp16,
+    selectedFontSize: FontSizeEnum[this.appState.fontSize].vp16,
+    backgroundBlurStyle: BlurStyle.BACKGROUND_THICK
+  })
+  @State @Watch('selectedChanged') updateCheckSelected: UpdateCheckInterval[] = []
 
   selectedChanged() {
     PreferenceManager.modify(conf => {
-      conf.update_check_interval = this.updateCheckSelected
-      this.appState.updateCheckInterval = this.updateCheckSelected
+      this.updateCheckSelected.forEach(v => {
+        conf.update_check_interval = v
+        this.appState.updateCheckInterval = v
+      })
     })
   }
 
   aboutToAppear(): void {
     PreferenceManager.readonly(conf => {
-      this.updateCheckSelected = conf.update_check_interval
+      this.updateCheckSelected.push(conf.update_check_interval)
     })
   }
 
   build() {
-    Select(UpdateCheckIntervalText.map(value => {
-      const option: SelectOption = {
-        value
-      }
-      return option
-    })).font({
-      size: FontSizeEnum[this.appState.fontSize].vp16
-    }).selected($$this.updateCheckSelected)
-      .value(UpdateCheckIntervalText[this.updateCheckSelected])
+    SegmentButton({
+      options: this.segmentOption,
+      selectedIndexes: $updateCheckSelected
+    })
   }
 }
