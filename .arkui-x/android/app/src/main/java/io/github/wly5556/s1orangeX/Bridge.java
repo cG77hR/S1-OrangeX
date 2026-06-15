@@ -92,14 +92,13 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
 
     public void shareImage(String path, String ext) {
         File internalFile = new File(path);
-        if (!internalFile.exists()) {
-            return;
-        }
+        if (!internalFile.exists()) return;
+
         File externalCacheDir = context.getExternalCacheDir();
-        if (externalCacheDir == null) {
-            return;
-        }
-        File sharedFile = new File(externalCacheDir, internalFile.getName() + '.' + ext);
+        if (externalCacheDir == null) return;
+
+        String sharedName = ensureExtension(internalFile.getName(), ext);
+        File sharedFile = new File(externalCacheDir, sharedName);
 
         try {
             try (FileChannel source = new FileInputStream(internalFile).getChannel();
@@ -113,14 +112,29 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             Intent shareIntent = new Intent(Intent.ACTION_SEND);
             shareIntent.setType("image/*");
             shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
-
             shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-            context.startActivity(Intent.createChooser(shareIntent, "分享图片"));
+            shareIntent.setClipData(ClipData.newUri(context.getContentResolver(), "shared_image", contentUri));
+
+            Intent chooser = Intent.createChooser(shareIntent, "分享图片");
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            context.startActivity(chooser);
 
         } catch (IOException e) {
             showToast("分享时出现异常");
         }
+    }
+
+    private static String ensureExtension(String filename, String ext) {
+        if (ext == null || ext.trim().isEmpty()) {
+            return filename;
+        }
+        String normalized = ext.trim().toLowerCase().replaceFirst("^\\.+", "");
+        if (filename.toLowerCase().endsWith("." + normalized)) {
+            return filename;
+        }
+        return filename + '.' + normalized;
     }
 
     public void setWindowSystemBarProperties(boolean isDarkFont) {
