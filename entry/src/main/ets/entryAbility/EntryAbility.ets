@@ -51,43 +51,33 @@ export default class EntryAbility extends UIAbility {
         hilog.error(0x0000, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err) ?? '');
         return;
       }
+      let windowClass: window.Window = windowStage.getMainWindowSync()
+      let isLayoutFullScreen = true
+      windowClass.setWindowLayoutFullScreen(isLayoutFullScreen).then(() => {
+        // 把安全区大小挂到状态上
+        let type = window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR
+        let avoidArea = windowClass.getWindowAvoidArea(type)
+        let bottomRectHeight = avoidArea.bottomRect.height
+        AppStorage.setOrCreate(SafeArea.bottom, bottomRectHeight)
+        type = window.AvoidAreaType.TYPE_SYSTEM
+        avoidArea = windowClass.getWindowAvoidArea(type)
+        let topRectHeight = avoidArea.topRect.height
+        AppStorage.setOrCreate(SafeArea.top, topRectHeight)
+        windowClass.on('avoidAreaChange', (data) => {
+          if (data.type === window.AvoidAreaType.TYPE_SYSTEM) {
+            AppStorage.setOrCreate(SafeArea.top, data.area.topRect.height)
+          } else if (data.type == window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR) {
+            AppStorage.setOrCreate(SafeArea.bottom, data.area.bottomRect.height)
+          } else if (data.type == window.AvoidAreaType.TYPE_KEYBOARD) {
+            AppStorage.setOrCreate(SafeArea.keyboard, data.area.bottomRect.height)
+          }
+        })
+      }).catch((err: BusinessError) => {
+        console.error('Failed to set the window layout to full-screen mode. Cause:' + JSON.stringify(err));
+      })
       if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
-        let windowClass: window.Window = windowStage.getMainWindowSync()
-        let isLayoutFullScreen = true
-        windowClass.setWindowLayoutFullScreen(isLayoutFullScreen).then(() => {
-          // 把安全区大小挂到状态上
-          let type = window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR
-          let avoidArea = windowClass.getWindowAvoidArea(type)
-          let bottomRectHeight = avoidArea.bottomRect.height
-          AppStorage.setOrCreate(SafeArea.bottom, bottomRectHeight)
-          type = window.AvoidAreaType.TYPE_SYSTEM
-          avoidArea = windowClass.getWindowAvoidArea(type)
-          let topRectHeight = avoidArea.topRect.height
-          AppStorage.setOrCreate(SafeArea.top, topRectHeight)
-          windowClass.on('avoidAreaChange', (data) => {
-            if (data.type === window.AvoidAreaType.TYPE_SYSTEM) {
-              AppStorage.setOrCreate(SafeArea.top, data.area.topRect.height)
-            } else if (data.type == window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR) {
-              AppStorage.setOrCreate(SafeArea.bottom, data.area.bottomRect.height)
-            } else if (data.type == window.AvoidAreaType.TYPE_KEYBOARD) {
-              AppStorage.setOrCreate(SafeArea.keyboard, data.area.bottomRect.height)
-            }
-          })
-        }).catch((err: BusinessError) => {
-          console.error('Failed to set the window layout to full-screen mode. Cause:' + JSON.stringify(err));
-        })
+        // pass
       } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
-        PlatformBridge.getWindowInset().then((v) : void => {
-          AppStorage.setOrCreate(SafeArea.top, v[0])
-          AppStorage.setOrCreate(SafeArea.bottom, v[1])
-          AppStorage.setOrCreate(SafeArea.keyboard, v[2])
-        })
-        PlatformBridge.onWindowInsetsListener((statusBarInset, navigationBarInset, keyboardInset): bridge.ResultValue => {
-          AppStorage.setOrCreate(SafeArea.top, statusBarInset)
-          AppStorage.setOrCreate(SafeArea.bottom, navigationBarInset)
-          AppStorage.setOrCreate(SafeArea.keyboard, keyboardInset)
-          return 0
-        })
         PlatformBridge.onUiModeChanged((darkMode: boolean): bridge.ResultValue => {
           PreferenceManager.readonly(conf => {
             if(conf.dark_mode_follow_system) {
