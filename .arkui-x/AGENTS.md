@@ -196,11 +196,11 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 - **子线程内 `vp2px` 未定义（🔴）**：`ImageKnife` 用了修改过的 har（`libs/ImageKnife3.2.0.har`），从主线程传 vp/px 比例；**不要**替换成 ohpm 上的原版。
 - **`setTimeout` 不传 delay 不执行回调（🔴）**：始终显式传 `delay`（哪怕是 0）。
 - **`request.agent`/相对时间格式化/JSON import 等 SDK 版本相关缺陷**：见 README 表中按 SDK 版本标注的状态，升级 SDK 时需重新验证。
+- **`Image` svg 仅支持path格式，<Rect><Rect /><g> ... <g/>的 svg 图标不支持
 
 ## 提交习惯
 
-- 每次合并 upstream 后，若做了适配，**单独再发一个 `修复代码合并:...(<upstream commit 短 hash>)` 提交**，与 merge commit 配对，便于追溯（见历史 `7557a57`、`74d6ef7`）。也可在 merge commit 的 message 里直接写明适配内容。
-- 版本号：`AppScope/app.json5` 的 `versionName` 与 `entry/build-profile.json5` 跟随 upstream，除非有 Android 专属版本需求。
+- 如果有重大适配问题或改动，在 merge commit 的 message 里直接写明。
 
 ## 快速自检清单（合并/新增功能后逐项过一遍）
 
