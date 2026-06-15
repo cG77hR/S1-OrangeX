@@ -31,7 +31,7 @@ import { PreferenceState } from '../NavProvider/NavigationPage'
 import Account from '../../api/model/account'
 import { CopyHyperLink, ShareText } from '../../ArkUIX/Utils/ShareKit'
 import { ErrorTips } from '../../common/component/ErrorTips'
-import { PostRating, ThreadRatingInfo } from '../../common/component/PostRating'
+import { PostRating, requestRating, ThreadRatingInfo } from '../../common/component/PostRating'
 import { openPostRatingDetail, PostRatingDetailParam } from './PostRatingDetail'
 import { PollInfoVM, PollOptionVM, PollPanel } from '../../common/component/PollPanel'
 import { getPollInfo, getPollList } from './PollDetail'
@@ -64,6 +64,7 @@ import { openPageSearch, PageSearchParam, PostSearchItem } from './ThreadPostSea
 import { UserTagDialog } from '../../common/component/UserTagDialog'
 import { getUserTagsCopy } from '../../common/dataStore/UserTag'
 import { LongScreenshotPageParam, openLongScreenshot } from './LongScreenshot'
+import { deviceInfo } from '@kit.BasicServicesKit';
 
 export interface PostViewModel {
   node: UIRootNode[]
@@ -77,11 +78,13 @@ export interface PostViewModel {
 export interface LongScreenshotPost {
   post: PostViewModel
   floorNumber: string
+  ratingInfo?: ThreadRatingInfo
 }
 
 export interface ThreadPostParam {
   tid: string // 仅tid是打开本页面的必须参数
   fid?: string
+  typeid?: string
   jumpToPage?: number
   authorid?: string
   subject?: string // 若传入，则将用作初始值，直到从api获取到真实值
@@ -124,7 +127,9 @@ export struct ThreadPostList {
   @Provide searchItemsByPage: Map<number, PostSearchItem[]> = new Map
   @State replyButtonExpand: boolean = false
   @Provide longScreenshotMode: boolean = false
-  @Provide @Watch('selectedPostsChanged') selectedPosts: Map<string, LongScreenshotPost> = new Map
+  @Provide @Watch('selectedPostsChanged') selectedPostsForShot: Map<string, LongScreenshotPost> = new Map
+  @Provide @Watch('consumePostForShot') mainPostForShot?: LongScreenshotPost = undefined
+  mainPostReturnPage: number = -1
   @State selectedCount: number = 0
   @Provide contentVisible: boolean = true
   @StorageProp(SafeArea.bottom) bottomRectHeight: number = 0
@@ -136,7 +141,7 @@ export struct ThreadPostList {
     }
     // 此时认为真正打开了帖子
     this.totalPage = parseInt(this.pageParam?.replies || '0') > 1 ?
-    Math.ceil(parseInt(this.pageParam?.replies || '0') / POST_PER_PAGE) : 1
+      Math.ceil(parseInt(this.pageParam?.replies || '0') / POST_PER_PAGE) : 1
     if (this.pageParam.jumpToPage && !this.jumpToPageDone && this.pageParam.jumpToPage <= this.totalPage) {
       let jumpToPage = this.pageParam.jumpToPage!
       if (jumpToPage < 0) {
@@ -158,22 +163,80 @@ export struct ThreadPostList {
   }
 
   selectedPostsChanged() {
-    this.selectedCount = this.selectedPosts.size
+    this.selectedCount = this.selectedPostsForShot.size
   }
 
   exitLongScreenshotMode() {
     this.longScreenshotMode = false
-    this.selectedPosts = new Map
+    this.selectedPostsForShot = new Map
+  }
+
+  consumePostForShot() {
+    if (!this.longScreenshotMode || this.mainPostReturnPage < 0) {
+      return
+    }
+    const pageToReturn = this.mainPostReturnPage
+    this.trySelectMainPostForShot()
+    this.mainPostReturnPage = -1
+    this.jumpToPage = pageToReturn
+  }
+
+  private mainPostKey(): string {
+    return '1-0'
+  }
+
+  private isMainPostSelected(): boolean {
+    return this.selectedPostsForShot.has(this.mainPostKey())
+  }
+
+  private trySelectMainPostForShot(): void {
+    if (this.mainPostForShot === undefined) {
+      return
+    }
+    if (this.isMainPostSelected()) {
+      return
+    }
+    const newMap = new Map(this.selectedPostsForShot)
+    newMap.set(this.mainPostKey(), this.mainPostForShot)
+    this.selectedPostsForShot = newMap
+  }
+
+  private toggleMainPostSelect(checked: boolean): void {
+    const newMap = new Map(this.selectedPostsForShot)
+    if (checked) {
+      if (this.mainPostForShot !== undefined) {
+        newMap.set(this.mainPostKey(), this.mainPostForShot)
+      } else {
+        ShowToast({
+          message: '正在选中主楼，请等待自动返回'
+        })
+        this.mainPostReturnPage = this.currentPage
+        this.jumpToPage = 1
+      }
+    } else {
+      newMap.delete(this.mainPostKey())
+    }
+    this.selectedPostsForShot = newMap
   }
 
   async generateLongScreenshot() {
-    if (this.selectedPosts.size == 0) {
+    if (this.selectedPostsForShot.size == 0) {
       return
     }
+    const posts = Array.from(this.selectedPostsForShot.values())
+    const ratingInfoMap = new Map<string, ThreadRatingInfo>()
+    posts.forEach(p => {
+      if (p.ratingInfo) {
+        ratingInfoMap.set(p.post.pid, p.ratingInfo)
+      }
+    })
     const param: LongScreenshotPageParam = {
       subject: this.pageParam.subject || '',
       tid: this.pageParam.tid,
-      posts: Array.from(this.selectedPosts.values())
+      fid: this.pageParam.fid,
+      typeid: this.pageParam.typeid,
+      posts,
+      ratingInfoMap
     }
     openLongScreenshot(this.pathStack, param)
     this.exitLongScreenshotMode()
@@ -262,6 +325,7 @@ export struct ThreadPostList {
               value: '长截图',
               action: () => {
                 this.longScreenshotMode = true
+                this.trySelectMainPostForShot()
               }
             }, {
               value: '复制链接',
@@ -296,24 +360,47 @@ export struct ThreadPostList {
         }
 
         if (this.longScreenshotMode) {
-          Row({ space: 8 }) {
-            Text(`已选 ${this.selectedCount} 楼`)
-              .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
-              .fontColor(Color.White)
-              .fontWeight(FontWeight.Medium)
-            Image($r('app.media.share')).width(24).height(24)
-              .fillColor(Color.White)
+          Column({ space: 8 }) {
+            Row({ space: 6 }) {
+              Text('主楼')
+                .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
+                .fontWeight(FontWeight.Medium)
+              Checkbox({ name: 'longScreenshotMainPost' })
+                .select(this.isMainPostSelected())
+                .selectedColor(this.appTheme.fontEmphasize)
+                .width(20)
+                .height(20)
+                .borderRadius(10)
+                .onChange((checked: boolean) => {
+                  this.toggleMainPostSelect(checked)
+                })
+            }
+            .height(36)
+            .padding({ left: 14, right: 10 })
+            .borderRadius(18)
+            .backgroundColor(this.appTheme.backgroundSecondary)
+            .shadow(ShadowStyle.OUTER_DEFAULT_SM)
+
+            Row({ space: 8 }) {
+              Text(`已选 ${this.selectedCount} 楼`)
+                .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                .fontColor(Color.White)
+                .fontWeight(FontWeight.Medium)
+              Image($r('app.media.share')).width(24).height(24)
+                .fillColor(Color.White)
+            }
+            .height(56)
+            .padding({ left: 20, right: 20 })
+            .borderRadius(28)
+            .backgroundColor(this.appTheme.fontEmphasize)
+            .clickEffect(HeavyClickEffect)
+            .shadow(ShadowStyle.OUTER_DEFAULT_MD)
+            .enabled(this.selectedCount > 0)
+            .opacity(this.selectedCount > 0 ? 1 : 0.5)
+            .onClick(() => this.generateLongScreenshot())
           }
-          .height(56)
-          .padding({ left: 20, right: 20 })
-          .borderRadius(28)
-          .backgroundColor(this.appTheme.fontEmphasize)
+          .alignItems(HorizontalAlign.End)
           .position({ bottom: 40, right: 30 })
-          .clickEffect(HeavyClickEffect)
-          .shadow(ShadowStyle.OUTER_DEFAULT_MD)
-          .enabled(this.selectedCount > 0)
-          .opacity(this.selectedCount > 0 ? 1 : 0.5)
-          .onClick(() => this.generateLongScreenshot())
         } else if (this.allowPullDownRefresh || this.replyButtonExpand) {
           Stack() {
             Image($r('app.media.ellipsis_message_fill')).width(30).height(30)
@@ -489,7 +576,8 @@ struct SinglePostPage {
   @Consume pageScrollOffset: Map<number, number>
   @Consume searchItemsByPage: Map<number, PostSearchItem[]>
   @Consume longScreenshotMode: boolean
-  @Consume selectedPosts: Map<string, LongScreenshotPost>
+  @Consume selectedPostsForShot: Map<string, LongScreenshotPost>
+  @Consume mainPostForShot?: LongScreenshotPost
   @State isLoading: boolean = true
   postDataSource: ArrayDataSource<PostViewModel> = new ArrayDataSource()
   postStringify: Map<string, string> = new Map
@@ -595,6 +683,14 @@ struct SinglePostPage {
     })
   }
 
+  async pushMainPostForShot(posts: PostViewModel[]) {
+    if (this.pageToLoad != 1 || this.pageParam.authorid !== undefined || posts.length == 0) {
+      return
+    }
+    const mainPost = await this.makePostForShot(posts[0], 0)
+    this.mainPostForShot = mainPost
+  }
+
   processPostListV4(v: wrapper<PostListV4>) {
     let rawPostList = v.Variables.postlist
     if (rawPostList.length == 0) {
@@ -674,6 +770,9 @@ struct SinglePostPage {
     if (this.pageParam.fid === undefined) {
       this.pageParam.fid = v.Variables.thread.fid
     }
+    if (this.pageParam.typeid === undefined) {
+      this.pageParam.typeid = v.Variables.thread.typeid
+    }
     this.threadAuthorUid = v.Variables.thread.authorid
     const postRating = new Map<string, ThreadRatingInfo | undefined>()
     Object.keys(v.Variables.comments).forEach(pid => postRating.set(pid, undefined))
@@ -745,6 +844,7 @@ struct SinglePostPage {
     }
 
     this.syncTagMap(postArray)
+    this.pushMainPostForShot(postArray)
 
     const lastUpdatePostCount = this.postDataSource.totalCount()
     if (this.postDataSource.totalCount() == 0) {
@@ -827,7 +927,7 @@ struct SinglePostPage {
 
   recordViewHistory(postIndex: number) {
     if (this.visiblePage == this.pageToLoad && this.isLoading == false && this.pageParam.authorid === undefined &&
-    this.pageParam.subject && this.pageParam.replies) {
+      this.pageParam.subject && this.pageParam.replies) {
       RecordThreadViewHistory(this.pageParam.tid, this.pageParam.subject, this.pidMap[postIndex], Date.now(),
         this.pageParam.replies, this.pageToLoad)
     }
@@ -877,26 +977,40 @@ struct SinglePostPage {
     return this.postFloorNumber.get(compIndex) ?? ''
   }
 
-  selectedPostKey(compIndex: number) {
+  selectedPostKeyForShot(compIndex: number) {
     return `${this.pageToLoad}-${compIndex}`
   }
 
-  isPostSelected(compIndex: number) {
-    return this.selectedPosts.has(this.selectedPostKey(compIndex))
+  isPostSelectedForShot(compIndex: number) {
+    return this.selectedPostsForShot.has(this.selectedPostKeyForShot(compIndex))
   }
 
-  togglePostSelect(post: PostViewModel, compIndex: number, checked: boolean) {
-    const key = this.selectedPostKey(compIndex)
-    const newMap = new Map(this.selectedPosts)
+  async makePostForShot(post: PostViewModel, compIndex: number): Promise<LongScreenshotPost> {
+    let ratingInfo: ThreadRatingInfo | undefined = undefined
+    if (this.postRatingInfo.has(post.pid)) {
+      ratingInfo = this.postRatingInfo.get(post.pid)
+      if (ratingInfo === undefined) {
+        const ratingInfoData = await requestRating(post.pid, this.pageParam.tid)
+        this.postRatingInfo.set(post.pid, ratingInfoData)
+        ratingInfo = ratingInfoData
+      }
+    }
+    return {
+      post,
+      floorNumber: this.getFloorNumber(compIndex),
+      ratingInfo,
+    }
+  }
+
+  async togglePostSelectForShot(post: PostViewModel, compIndex: number, checked: boolean) {
+    const key = this.selectedPostKeyForShot(compIndex)
+    const newMap = new Map(this.selectedPostsForShot)
     if (checked) {
-      newMap.set(key, {
-        post,
-        floorNumber: this.getFloorNumber(compIndex)
-      })
+      newMap.set(key, await this.makePostForShot(post, compIndex))
     } else {
       newMap.delete(key)
     }
-    this.selectedPosts = newMap
+    this.selectedPostsForShot = newMap
   }
 
   @LocalBuilder
@@ -916,10 +1030,12 @@ struct SinglePostPage {
         onImgClick: (url: string, index: number): void => {
           this.openImageViewer(this.imgUrl, index)
         },
-        lazyLoadImage: true
+        lazyLoadImage: true,
+        adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust
       })
     },
-      (uiRoot: UIRootNode, index: number) => index.toString() + this.appState.fontSize + this.appState.fontSizeOverride)
+      (uiRoot: UIRootNode, index: number) => index.toString() + this.appState.fontSize +
+        this.appState.fontSizeOverride + this.appState.darkModeContentColorAdjust + this.appTheme.isDark)
   }
 
   @LocalBuilder
@@ -994,6 +1110,7 @@ struct SinglePostPage {
                   const param: ThreadPostParam = {
                     tid: this.pageParam.tid,
                     fid: this.pageParam.fid,
+                    typeid: this.pageParam.typeid,
                     subject: this.pageParam.subject,
                     authorid: post.uid
                   }
@@ -1014,77 +1131,77 @@ struct SinglePostPage {
 
           Column() {
             if (this.longScreenshotMode) {
-              Checkbox({ name: this.selectedPostKey(compIndex) })
-                .select(this.isPostSelected(compIndex))
+              Checkbox({ name: this.selectedPostKeyForShot(compIndex) })
+                .select(this.isPostSelectedForShot(compIndex))
                 .selectedColor(this.appTheme.fontEmphasize)
                 .width(28)
                 .height(28)
                 .onChange((checked: boolean) => {
-                  this.togglePostSelect(post, compIndex, checked)
+                  this.togglePostSelectForShot(post, compIndex, checked)
                 })
             } else {
               this.buildFloorNumber({
-              floorNumber: this.getFloorNumber(compIndex),
-              menu: [{
-                value: '回复',
-                action: () => {
-                  if (!this.pageParam.subject) {
-                    return
-                  }
-                  const param: WriteReplyParam = {
-                    defaultTransition: true,
-                    tid: this.pageParam.tid,
-                    quotePid: post.pid,
-                    mode: WriteReplyMode.NEW_POST_QUOTE,
-                    subjectToReply: this.pageParam.subject
-                  }
-                  openWriteReply(this.pathStack, param, (data): void => this.onBackFromReply(data))
-                }
-              }, post.uid == this.currentUserUid ? {
-                value: '编辑',
-                action: () => {
-                  if (!this.pageParam.subject) {
-                    return
-                  }
-                  const param: WriteReplyParam = {
-                    defaultTransition: true,
-                    tid: this.pageParam.tid,
-                    fid: this.pageParam.fid,
-                    editPid: post.pid,
-                    mode: WriteReplyMode.EDIT,
-                    subjectToReply: this.pageParam.subject
-                  }
-                  openWriteReply(this.pathStack, param, (data): void => this.onBackFromReply(data))
-                }
-              } : {
-                value: '评分',
-                action: () => {
-                  const param: PostRatingDetailParam = {
-                    rating: [],
-                    pid: post.pid,
-                    tid: this.pageParam.tid,
-                    userCount: 0,
-                    totalRating: 0,
-                    showPanel: true,
-                    transitionId: this.generatePostRatingTransitionId(post.pid),
-                    reload: true
-                  }
-                  openPostRatingDetail(this.pathStack, param, () => {
-                  })
-                }
-              },
-                {
-                  value: "举报",
+                floorNumber: this.getFloorNumber(compIndex),
+                menu: [{
+                  value: '回复',
                   action: () => {
-                    openReportPost({
+                    if (!this.pageParam.subject) {
+                      return
+                    }
+                    const param: WriteReplyParam = {
+                      defaultTransition: true,
                       tid: this.pageParam.tid,
-                      fid: this.pageParam.fid ?? '',
-                      rid: post.pid,
-                      page: this.pageToLoad
-                    }, this.pathStack)
+                      quotePid: post.pid,
+                      mode: WriteReplyMode.NEW_POST_QUOTE,
+                      subjectToReply: this.pageParam.subject
+                    }
+                    openWriteReply(this.pathStack, param, (data): void => this.onBackFromReply(data))
                   }
-                }]
-            })
+                }, post.uid == this.currentUserUid ? {
+                  value: '编辑',
+                  action: () => {
+                    if (!this.pageParam.subject) {
+                      return
+                    }
+                    const param: WriteReplyParam = {
+                      defaultTransition: true,
+                      tid: this.pageParam.tid,
+                      fid: this.pageParam.fid,
+                      editPid: post.pid,
+                      mode: WriteReplyMode.EDIT,
+                      subjectToReply: this.pageParam.subject
+                    }
+                    openWriteReply(this.pathStack, param, (data): void => this.onBackFromReply(data))
+                  }
+                } : {
+                  value: '评分',
+                  action: () => {
+                    const param: PostRatingDetailParam = {
+                      rating: [],
+                      pid: post.pid,
+                      tid: this.pageParam.tid,
+                      userCount: 0,
+                      totalRating: 0,
+                      showPanel: true,
+                      transitionId: this.generatePostRatingTransitionId(post.pid),
+                      reload: true
+                    }
+                    openPostRatingDetail(this.pathStack, param, () => {
+                    })
+                  }
+                },
+                  {
+                    value: "举报",
+                    action: () => {
+                      openReportPost({
+                        tid: this.pageParam.tid,
+                        fid: this.pageParam.fid ?? '',
+                        rid: post.pid,
+                        page: this.pageToLoad
+                      }, this.pathStack)
+                    }
+                  }]
+              })
             }
           }.alignItems(HorizontalAlign.Start)
           .height('100%')
@@ -1123,7 +1240,7 @@ struct SinglePostPage {
         } else {
           this.buildPostContent(this.postHidden.get(post.pid) || [])
           if (this.appState.hiddenPostDisplay == HiddenPostDisplay.visible ||
-          this.postHiddenExpand.has(post.pid)) {
+            this.postHiddenExpand.has(post.pid)) {
             Column() {
               if (post.node.length > 0) {
                 this.buildPostContent(post.node)
@@ -1211,8 +1328,8 @@ struct SinglePostPage {
     .brightness(this.pageParam.jumpToPid == post.pid && this.pageParam.jumpToPidWithHighlight ?
       (this.appTheme.isDark ? 1.1 : 0.9) : 1)
     .animation({ duration: 300, iterations: 2 })
-    .backgroundColor(this.isPostSelected(compIndex) ?
-      (this.appTheme.isDark ? 'rgba(90,142,137,0.25)' : 'rgba(10,89,247,0.12)') :
+    .backgroundColor(this.isPostSelectedForShot(compIndex) ?
+      (this.appTheme.isDark ? 'rgba(90,142,137,0.16)' : 'rgba(10,89,247,0.07)') :
       this.appTheme.backgroundSecondary)
     .padding({
       left: PostContentHorizontalPadding,
@@ -1220,6 +1337,8 @@ struct SinglePostPage {
       bottom: PostContentVerticalPadding,
       right: PostContentHorizontalPadding + (this.appState.postAlphabetIndexer ? 6 : 0)
     })
+    .hitTestBehavior(
+      (deviceInfo.apiAvailable(20) && this.longScreenshotMode) ? HitTestMode.BLOCK_DESCENDANTS : HitTestMode.Default)
   }
 
   @LocalBuilder
@@ -1241,7 +1360,12 @@ struct SinglePostPage {
                 this.buildPost(this.pinnedPost, PinnedPostFloorIndex)
                 this.buildPostDivider()
               }
-            }
+            }.onClick(deviceInfo.apiAvailable(20) ? (() => {
+              // buildPost内用BLOCK_DESCENDANTS阻塞了自身及子的hit test，配合这里实现点击长截图模式下整个回帖区域可选中。这个api since 20。
+              if (this.longScreenshotMode) {
+                this.togglePostSelectForShot(post, compIndex, !this.isPostSelectedForShot(compIndex))
+              }
+            }) : undefined)
           }
         }, (post: PostViewModel, index: number) => this.postStringify.get(post.pid) + index.toString())
         ListItem() {

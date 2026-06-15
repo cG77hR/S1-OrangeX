@@ -29,7 +29,6 @@ import { openSplitModeShortcut } from '../NavDest/SplitModeShortcut'
 import { buildNavDestPage, PageNameEnum } from '../PageNameEnum'
 import { GotoThreadDialog } from '../../common/component/GotoThreadDialog'
 import { openUserGuide } from '../NavDest/UserGuide'
-import { promptAction } from '@kit.ArkUI'
 import { PostSignature } from '../../common/PostSignature'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { SetNightMode } from '../../ArkUIX/Utils/SetNightMode'
@@ -55,6 +54,7 @@ export interface PreferenceState {
   showCredit: boolean
   fontSize: number
   fontSizeOverride: FontSizeOverride
+  darkModeContentColorAdjust: boolean
   hiddenPostDisplay: HiddenPostDisplay
   splitMode: boolean
   threadItemGap: number
@@ -77,6 +77,7 @@ struct NavigationPage {
     showCredit: defaultApplicationConfig.show_credit,
     fontSize: defaultApplicationConfig.font_size,
     fontSizeOverride: defaultApplicationConfig.font_size_override,
+    darkModeContentColorAdjust: defaultApplicationConfig.dark_mode_content_color_adjust,
     hiddenPostDisplay: defaultApplicationConfig.hidden_post_display,
     splitMode: defaultApplicationConfig.split_mode,
     threadItemGap: defaultApplicationConfig.thread_item_gap,
@@ -125,6 +126,7 @@ struct NavigationPage {
       this.appState.showCredit = conf.show_credit
       this.appState.fontSize = conf.font_size
       this.appState.fontSizeOverride = conf.font_size_override
+      this.appState.darkModeContentColorAdjust = conf.dark_mode_content_color_adjust
       this.appState.hiddenPostDisplay = conf.hidden_post_display
       this.appState.splitMode = conf.split_mode
       this.appState.threadItemGap = conf.thread_item_gap

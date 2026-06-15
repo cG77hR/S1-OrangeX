@@ -13,15 +13,21 @@ import {
   ThreadPostUINodeRender, UIRootNode
 } from '../../common/component/ThreadPostContent'
 import { LongScreenshotPost } from './ThreadPostList'
+import { ThreadRatingInfo } from '../../common/component/PostRating'
 import { savePixelMapToCache } from '../../common/PixelMapSaver'
 import { ShareImage } from '../../ArkUIX/Utils/ShareKit'
 import { waitFor } from '../../common/AwaitUtil'
 import { getSnapshotArea, mergeImage } from '../../common/LongScreenshotMerger'
+import { getGroupName, getThreadTypeName } from '../../common/ForumUtil'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 
 export interface LongScreenshotPageParam {
   subject: string
   tid: string
+  fid?: string
+  typeid?: string
   posts: LongScreenshotPost[]
+  ratingInfoMap: Map<string, ThreadRatingInfo>
 }
 
 const LIST_ID = 'LongScreenshotList'
@@ -39,7 +45,8 @@ export struct LongScreenshotPage {
   @State pageParam: LongScreenshotPageParam = {
     subject: '',
     tid: '',
-    posts: []
+    posts: [],
+    ratingInfoMap: new Map()
   }
   private scroller: Scroller = new Scroller()
   private listComponentWidth: number = 0
@@ -49,24 +56,33 @@ export struct LongScreenshotPage {
   private scrollYOffsets: number[] = []
   private areaArray: image.PositionArea[] = []
 
+  private formatRating(total: number): string {
+    return `${total >= 0 ? '+' : ''}${total}`
+  }
+
   @Builder
   postItemBuilder(item: LongScreenshotPost) {
     Column() {
       Row() {
-        ImageKnifeComponent({
-          imageKnifeOption: {
-            loadSrc: avatarPath(item.post.uid),
-            errorholderSrc: $r('app.media.avatar_base'),
-            objectFit: ImageFit.Cover,
-            errorholderObjectFit: ImageFit.Cover,
-            border: {
-              radius: FontSizeEnum[this.appState.fontSize].vp40 / 2
+        Stack() {
+          Image($r('app.media.avatar_base'))
+            .height(FontSizeEnum[this.appState.fontSize].vp40)
+            .width(FontSizeEnum[this.appState.fontSize].vp40)
+            .draggable(false)
+            .borderRadius(FontSizeEnum[this.appState.fontSize].vp40 / 2)
+          ImageKnifeComponent({
+            imageKnifeOption: {
+              loadSrc: avatarPath(item.post.uid),
+              objectFit: ImageFit.Cover,
+              border: {
+                radius: FontSizeEnum[this.appState.fontSize].vp40 / 2
+              }
             }
-          }
-        })
-          .height(FontSizeEnum[this.appState.fontSize].vp40)
-          .width(FontSizeEnum[this.appState.fontSize].vp40)
-          .draggable(false)
+          })
+            .height(FontSizeEnum[this.appState.fontSize].vp40)
+            .width(FontSizeEnum[this.appState.fontSize].vp40)
+            .draggable(false)
+        }
 
         Column() {
           Text(item.post.username)
@@ -106,9 +122,24 @@ export struct LongScreenshotPage {
           },
           onImgClick: (url: string, index: number): void => {
           },
-          lazyLoadImage: false
+          lazyLoadImage: false,
+          adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust
         })
       }, (uiRoot: UIRootNode, index: number) => index.toString())
+
+      if (this.pageParam.ratingInfoMap.has(item.post.pid)) {
+        Row() {
+          Text() {
+            Span(`战斗力 ${this.formatRating(this.pageParam.ratingInfoMap.get(item.post.pid)!.totalRating)}`)
+            Span(' / ').opacity(0.7)
+            Span(`${this.pageParam.ratingInfoMap.get(item.post.pid)!.userCount}人评价`)
+          }.fontSize(FontSizeEnum[this.appState.fontSize].vp14)
+          .fontColor(this.appTheme.fontSecondary)
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.End)
+        .margin({ top: 8 })
+      }
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
@@ -124,7 +155,9 @@ export struct LongScreenshotPage {
 
   private async snapAndMerge() {
     this.scrollYOffsets.push(this.curYOffset)
-    const pixelMap = await this.getUIContext().getComponentSnapshot().get(LIST_ID)
+    const pixelMap = await this.getUIContext().getComponentSnapshot().get(LIST_ID, {
+      waitUntilRenderFinished: true
+    })
     const area = await getSnapshotArea(pixelMap, this.scrollYOffsets, this.listComponentWidth,
       this.listComponentHeight)
     this.areaArray.push(area)
@@ -183,16 +216,23 @@ export struct LongScreenshotPage {
           .margin({ bottom: 8 })
         }, (item: LongScreenshotPost, index: number) => index.toString())
         ListItem() {
-          Text(`帖子 ${this.pageParam.tid}`)
-            .fontSize(FontSizeEnum[this.appState.fontSize].vp13)
-            .fontColor(this.appTheme.fontSecondary)
-            .width('100%')
-            .padding({
-              left: PostContentHorizontalPadding,
-              right: PostContentHorizontalPadding,
-              top: 8,
-              bottom: PostContentVerticalPadding
-            })
+          Column({ space: 4 }) {
+            Text(`帖子 ${this.pageParam.tid}`)
+              .fontSize(FontSizeEnum[this.appState.fontSize].vp13)
+              .fontColor(this.appTheme.fontSecondary)
+              .width('100%')
+            Text(`${getGroupName(this.pageParam.fid)} · ${getThreadTypeName(this.pageParam.fid, this.pageParam.typeid)}`)
+              .fontSize(FontSizeEnum[this.appState.fontSize].vp13)
+              .fontColor(this.appTheme.fontSecondary)
+              .width('100%')
+          }
+          .width('100%')
+          .padding({
+            left: PostContentHorizontalPadding,
+            right: PostContentHorizontalPadding,
+            top: 8,
+            bottom: PostContentVerticalPadding
+          })
         }
       }
       .id(LIST_ID)
@@ -212,9 +252,14 @@ export struct LongScreenshotPage {
       })
     }
     .hideTitleBar(true)
-    .backgroundColor(this.appTheme.backgroundPrimary)
+    .backgroundColor(this.appTheme.backgroundSecondary)
     .onReady((context: NavDestinationContext) => {
+      ShowToast({
+        message: "请等待截图完成"
+      })
       this.pathStack = context.pathStack
+      const param = context.pathInfo.param as LongScreenshotPageParam
+      param.posts.sort((a, b) => Number(a.floorNumber) - Number(b.floorNumber))
       this.pageParam = context.pathInfo.param as LongScreenshotPageParam
       this.scroller.scrollTo({ xOffset: 0, yOffset: 0 })
       waitFor(FIRST_RENDER_DELAY).then((): Promise<void> => this.snapAndMerge())
