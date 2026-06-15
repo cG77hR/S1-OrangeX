@@ -1,3 +1,4 @@
+import { SegmentButton, SegmentButtonIconTextItem, SegmentButtonItemTuple, SegmentButtonOptions } from '@kit.ArkUI'
 import { PreferenceManager } from '../../../config/UserConfig'
 import { FontSizeOverride } from '../../../config/v1/default'
 import { PreferenceState } from '../../../pages/NavProvider/NavigationPage'
@@ -16,31 +17,38 @@ FontOverrideModeDesc[FontSizeOverride.ignoreAll] = '完全忽略帖文的字体�
 
 @Component
 export struct ContentFontSizeOverridePref {
-  @Consume appState: PreferenceState
-  @State @Watch('selectedChanged') fontSizeOverrideSelected: FontSizeOverride = FontSizeOverride.none
+  @Consume @Watch('stateChanged') appState: PreferenceState
+  stateChanged() {
+    this.segmentOption.fontSize = this.segmentOption.selectedFontSize = FontSizeEnum[this.appState.fontSize].vp16
+  }
+  @State segmentOption: SegmentButtonOptions = SegmentButtonOptions.capsule({
+    buttons: FontOverrideMode.map(v => ({ text: v } as SegmentButtonIconTextItem)) as SegmentButtonItemTuple,
+    multiply: false,
+    fontSize: FontSizeEnum[this.appState.fontSize].vp16,
+    selectedFontSize: FontSizeEnum[this.appState.fontSize].vp16,
+    backgroundBlurStyle: BlurStyle.BACKGROUND_THICK
+  })
+  @State @Watch('selectedChanged') fontSizeOverrideSelected: FontSizeOverride[] = []
 
   selectedChanged() {
     PreferenceManager.modify(conf => {
-      conf.font_size_override = this.fontSizeOverrideSelected
-      this.appState.fontSizeOverride = this.fontSizeOverrideSelected
+      this.fontSizeOverrideSelected.forEach(v => {
+        conf.font_size_override = v
+        this.appState.fontSizeOverride = v
+      })
     })
   }
 
   aboutToAppear(): void {
     PreferenceManager.readonly(conf => {
-      this.fontSizeOverrideSelected = conf.font_size_override
+      this.fontSizeOverrideSelected.push(conf.font_size_override)
     })
   }
 
   build() {
-    Select(FontOverrideMode.map(value => {
-      const option: SelectOption = {
-        value
-      }
-      return option
-    })).font({
-      size: FontSizeEnum[this.appState.fontSize].vp16
-    }).selected($$this.fontSizeOverrideSelected)
-      .value(FontOverrideMode[this.fontSizeOverrideSelected])
+    SegmentButton({
+      options: this.segmentOption,
+      selectedIndexes: $fontSizeOverrideSelected
+    })
   }
 }

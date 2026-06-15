@@ -1,3 +1,4 @@
+import { SegmentButton, SegmentButtonIconTextItem, SegmentButtonItemTuple, SegmentButtonOptions } from '@kit.ArkUI'
 import { PreferenceManager } from '../../../config/UserConfig'
 import { ImageCacheSizeLevel } from '../../../config/v1/default'
 import { PreferenceState } from '../../../pages/NavProvider/NavigationPage'
@@ -17,30 +18,35 @@ ImageCacheSizeLevelText[ImageCacheSizeLevel.mb512] = '512 MB'
 
 @Component
 export struct ImageCachePref {
-  @Consume appState: PreferenceState
-  @State @Watch('selectedChanged') imageCacheSelected: ImageCacheSizeLevel = ImageCacheSizeLevel.mb256
+  @Consume @Watch('stateChanged') appState: PreferenceState
+  stateChanged() {
+    this.segmentOption.fontSize = this.segmentOption.selectedFontSize = FontSizeEnum[this.appState.fontSize].vp16
+  }
+  @State segmentOption: SegmentButtonOptions = SegmentButtonOptions.capsule({
+    buttons: ImageCacheSizeLevelText.map(v => ({ text: v } as SegmentButtonIconTextItem)) as SegmentButtonItemTuple,
+    multiply: false,
+    fontSize: FontSizeEnum[this.appState.fontSize].vp16,
+    selectedFontSize: FontSizeEnum[this.appState.fontSize].vp16,
+    backgroundBlurStyle: BlurStyle.BACKGROUND_THICK
+  })
+  @State @Watch('selectedChanged') imageCacheSelected: ImageCacheSizeLevel[] = []
 
   selectedChanged() {
     PreferenceManager.modify(conf => {
-      conf.image_cache_size = this.imageCacheSelected
+      this.imageCacheSelected.forEach(v => conf.image_cache_size = v)
     })
   }
 
   aboutToAppear(): void {
     PreferenceManager.readonly(conf => {
-      this.imageCacheSelected = conf.image_cache_size
+      this.imageCacheSelected.push(conf.image_cache_size)
     })
   }
 
   build() {
-    Select(ImageCacheSizeLevelText.map(value => {
-      const option: SelectOption = {
-        value
-      }
-      return option
-    })).font({
-      size: FontSizeEnum[this.appState.fontSize].vp16
-    }).selected($$this.imageCacheSelected)
-      .value(ImageCacheSizeLevelText[this.imageCacheSelected])
+    SegmentButton({
+      options: this.segmentOption,
+      selectedIndexes: $imageCacheSelected
+    })
   }
 }

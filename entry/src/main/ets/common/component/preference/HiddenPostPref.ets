@@ -1,3 +1,4 @@
+import { SegmentButton, SegmentButtonIconTextItem, SegmentButtonItemTuple, SegmentButtonOptions } from '@kit.ArkUI'
 import { PreferenceManager } from '../../../config/UserConfig'
 import { HiddenPostDisplay } from '../../../config/v1/default'
 import { PreferenceState } from '../../../pages/NavProvider/NavigationPage'
@@ -17,31 +18,38 @@ HiddenPostDisplayModeDesc[HiddenPostDisplay.visibleWithoutHiddenReason] =
 
 @Component
 export struct HiddenPostPref {
-  @Consume appState: PreferenceState
-  @State @Watch('selectedChanged') hiddenPostDisplaySelected: HiddenPostDisplay = HiddenPostDisplay.hidden
+  @Consume @Watch('stateChanged') appState: PreferenceState
+  stateChanged() {
+    this.segmentOption.fontSize = this.segmentOption.selectedFontSize = FontSizeEnum[this.appState.fontSize].vp16
+  }
+  @State segmentOption: SegmentButtonOptions = SegmentButtonOptions.capsule({
+    buttons: HiddenPostDisplayMode.map(v => ({ text: v } as SegmentButtonIconTextItem)) as SegmentButtonItemTuple,
+    multiply: false,
+    fontSize: FontSizeEnum[this.appState.fontSize].vp16,
+    selectedFontSize: FontSizeEnum[this.appState.fontSize].vp16,
+    backgroundBlurStyle: BlurStyle.BACKGROUND_THICK
+  })
+  @State @Watch('selectedChanged') hiddenPostDisplaySelected: HiddenPostDisplay[] = []
 
   selectedChanged() {
     PreferenceManager.modify(conf => {
-      conf.hidden_post_display = this.hiddenPostDisplaySelected
-      this.appState.hiddenPostDisplay = this.hiddenPostDisplaySelected
+      this.hiddenPostDisplaySelected.forEach(v => {
+        conf.hidden_post_display = v
+        this.appState.hiddenPostDisplay = v
+      })
     })
   }
 
   aboutToAppear(): void {
     PreferenceManager.readonly(conf => {
-      this.hiddenPostDisplaySelected = conf.hidden_post_display
+      this.hiddenPostDisplaySelected.push(conf.hidden_post_display)
     })
   }
 
   build() {
-    Select(HiddenPostDisplayMode.map(value => {
-      const option: SelectOption = {
-        value
-      }
-      return option
-    })).font({
-      size: FontSizeEnum[this.appState.fontSize].vp16
-    }).selected($$this.hiddenPostDisplaySelected)
-      .value(HiddenPostDisplayMode[this.hiddenPostDisplaySelected])
+    SegmentButton({
+      options: this.segmentOption,
+      selectedIndexes: $hiddenPostDisplaySelected
+    })
   }
 }
