@@ -21,6 +21,7 @@ import android.os.Looper;
 import android.provider.MediaStore;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsetsController;
 import android.webkit.MimeTypeMap;
 import android.widget.Toast;
 
@@ -144,15 +145,26 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             return;
         }
         Window window = ((android.app.Activity) context).getWindow();
-        window.setStatusBarColor(Color.TRANSPARENT);
-        View decorView = window.getDecorView();
-        int flags = decorView.getSystemUiVisibility();
-        if (isDarkFont) {
-            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = window.getInsetsController();
+            if (controller != null) {
+                controller.setSystemBarsAppearance(
+                        isDarkFont ?
+                                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS : 0,
+                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                );
+            }
         } else {
-            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            window.setStatusBarColor(Color.TRANSPARENT);
+            View decorView = window.getDecorView();
+            int flags = decorView.getSystemUiVisibility();
+            if (isDarkFont) {
+                flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            } else {
+                flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            }
+            decorView.setSystemUiVisibility(flags);
         }
-        decorView.setSystemUiVisibility(flags);
     }
 
     public void hideSoftKeyboard() {
@@ -242,15 +254,18 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
     }
 
     public void setNightMode(Integer mode) {
+        // ArkUI-X侧切换到深色模式后调用，使得ArkUI-X框架内侧能把配色（如文字）切换到对应模式
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            Map<Integer, Integer> modeMap = new HashMap<>();
-            modeMap.put(-1, UiModeManager.MODE_NIGHT_AUTO);
-            modeMap.put(0, UiModeManager.MODE_NIGHT_YES);
-            modeMap.put(1, UiModeManager.MODE_NIGHT_NO);
-            if (modeMap.containsKey(mode)) {
-                UiModeManager uim = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
-                uim.setApplicationNightMode(modeMap.get(mode));
-            }
+            MAIN_HANDLER.post(() -> {
+                Map<Integer, Integer> modeMap = new HashMap<>();
+                modeMap.put(-1, UiModeManager.MODE_NIGHT_AUTO);
+                modeMap.put(0, UiModeManager.MODE_NIGHT_YES);
+                modeMap.put(1, UiModeManager.MODE_NIGHT_NO);
+                if (modeMap.containsKey(mode)) {
+                    UiModeManager uim = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
+                    uim.setApplicationNightMode(modeMap.get(mode));
+                }
+            });
         } else {
             // ArkUI-X的StageActivity继承自Activity，而不是AppCompatActivity，是否有办法
             // 使得AppCompatDelegate.setDefaultNightMode能正常起效？

@@ -17,7 +17,7 @@ export function SetNightMode(conf: ApplicationConfig, context: common.Applicatio
   } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
     PlatformBridge.setNightMode(targetMode)
     if (conf.dark_mode_follow_system === false) {
-      AppStorage.setOrCreate(PropKey.currentColorMode, targetMode)
+      setTimeout(() => AppStorage.setOrCreate(PropKey.currentColorMode, targetMode), 100)
     }
   }
 }
