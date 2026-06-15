@@ -16,10 +16,11 @@ import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.view.View;
 import android.view.Window;
-import android.view.inputmethod.InputMethodManager;
 import android.webkit.MimeTypeMap;
 import android.widget.Toast;
 
@@ -46,6 +47,7 @@ import ohos.ace.adapter.capability.bridge.IMethodResult;
 public class Bridge extends BridgePlugin implements IMessageListener, IMethodResult {
 
     private final Context context;
+    private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
     Bridge(Context context, String name, BridgeManager bridgeManager) {
         super(context, name, bridgeManager);
@@ -173,7 +175,12 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
     }
 
     public void showToast(String text) {
-        Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
+        MAIN_HANDLER.post(() ->
+                Toast.makeText(
+                        context.getApplicationContext(),
+                        text,
+                        Toast.LENGTH_SHORT
+                ).show());
     }
 
     public void copyToExternalDownload(String path, String filename) {
