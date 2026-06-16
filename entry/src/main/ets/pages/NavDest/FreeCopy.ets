@@ -12,7 +12,7 @@ import {
   bbCodeSerializer,
   markdownSerializer,
   plainTextSerializer
-} from '../../common/component/ThreadPostContentSerializer'
+} from '../../common/ThreadPostContentSerializer'
 import { CopyText, ShareText } from '../../ArkUIX/Utils/ShareKit'
 import { HeavyClickEffect } from '../../common/Animation'
 import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
