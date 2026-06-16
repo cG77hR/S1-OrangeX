@@ -31,6 +31,7 @@ import ohos.stage.ability.adapter.StageActivity;
  */
 public class EntryEntryAbilityActivity extends StageActivity {
 
+    private static final long OPEN_S1_LINK_DISPATCH_DELAY_MS = 500L;
     private Bridge bridgeInstance = null;
 
     private Bridge getBridgeInstance() {
@@ -65,6 +66,23 @@ public class EntryEntryAbilityActivity extends StageActivity {
         });
         setInstanceName("io.github.wly5556.s1orangeX:entry:EntryAbility:");
         super.onCreate(savedInstanceState);
+        dispatchOpenS1Like(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        dispatchOpenS1Like(intent);
+    }
+
+    private void dispatchOpenS1Like(Intent intent) {
+        View contentView = findViewById(android.R.id.content);
+        if (contentView == null) {
+            getBridgeInstance().openS1LikeFromIntent(intent);
+            return;
+        }
+        contentView.postDelayed(() -> getBridgeInstance().openS1LikeFromIntent(intent), OPEN_S1_LINK_DISPATCH_DELAY_MS);
     }
 
     public static final int PICK_IMAGES_REQUEST_CODE = 1001;

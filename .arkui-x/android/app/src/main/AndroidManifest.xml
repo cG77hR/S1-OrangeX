@@ -22,6 +22,28 @@
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+
+                <data
+                    android:scheme="https"
+                    android:host="stage1st.com"
+                    android:path="/2b/forum.php"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+
+                <data
+                    android:scheme="https"
+                    android:host="stage1st.com"
+                    android:pathPrefix="/2b/thread"/>
+            </intent-filter>
         </activity>
         <meta-data android:name="force_dark_google" android:value="true" /> <!-- 禁用miui反色 -->
         <provider

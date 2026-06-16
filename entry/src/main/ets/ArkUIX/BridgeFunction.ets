@@ -17,12 +17,15 @@ enum BridgeFunction {
   copyToExternalDownload = "copyToExternalDownload",
   setNightMode = "setNightMode",
   getSdkInt = "getSdkInt",
-  getWindowInset = "getWindowInset"
+  getWindowInset = "getWindowInset",
+  openAppOpenByDefaultSettings = "openAppOpenByDefaultSettings",
+  opens1like = "opens1like"
 }
 
 type BridgeCallback = (...parameters: bridge.Message[]) => bridge.ResultValue
 type WindowInsetsListener = (statusBarInset: number, navigationBarInset: number, keyboardInset: number) => bridge.ResultValue
 type UiModeChangeListener = (darkMode: boolean) => bridge.ResultValue
+type OpenS1LikeListener = (href: string) => bridge.ResultValue
 
 class PlatformBridgeClass {
   private bridgeImpl: bridge.BridgeObject | undefined = undefined
@@ -131,6 +134,11 @@ class PlatformBridgeClass {
     return await impl.callMethod(BridgeFunction.getWindowInset) as [number, number, number]
   }
 
+  async openAppOpenByDefaultSettings() {
+    const impl = await this.getImpl()
+    return impl.callMethod(BridgeFunction.openAppOpenByDefaultSettings)
+  }
+
   private async pushRegisterMethod(callback: BridgeCallback, functionName: BridgeFunction) {
     const impl = await this.getImpl()
     impl.registerMethod({
@@ -149,6 +157,10 @@ class PlatformBridgeClass {
 
   async onUiModeChanged(callback: UiModeChangeListener) {
     this.pushRegisterMethod(callback as BridgeCallback, BridgeFunction.onUiModeChanged)
+  }
+
+  async onOpenS1Like(callback: OpenS1LikeListener) {
+    this.pushRegisterMethod(callback as BridgeCallback, BridgeFunction.opens1like)
   }
 }
 

@@ -34,6 +34,8 @@ import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { SetNightMode } from '../../ArkUIX/Utils/SetNightMode'
 import { checkVersionOnStartup } from '../../common/VersionCheck'
 import { FontSizeSetup } from '../../common/fontSize/FontSizeEnum'
+import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
+import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
 
 enum NavigationProvider {
   ForumGroupView = 'ForumGroupView',
@@ -102,6 +104,7 @@ struct NavigationPage {
   gotoThreadDialog: CustomDialogController = new CustomDialogController({
     builder: GotoThreadDialog({ getPathStack: () => this.pathStack }),
   })
+  openS1LikeBridgeRegistered: boolean = false
 
   updateStatesBarColor() {
     SetStatusBarColor(this.context, this.appTheme)
@@ -174,6 +177,13 @@ struct NavigationPage {
     this.context.eventHub.on(Event.WantWithUri, (uri: string) => {
       openS1LinkLike(uri, this.pathStack, this.context, '', '1', false)
     })
+    if (!this.openS1LikeBridgeRegistered && PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+      this.openS1LikeBridgeRegistered = true
+      PlatformBridge.onOpenS1Like((href: string) => {
+        openS1LinkLike(href, this.pathStack, this.context, '', '1', false)
+        return 0
+      })
+    }
   }
 
   build() {

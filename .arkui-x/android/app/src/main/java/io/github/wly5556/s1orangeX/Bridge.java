@@ -19,6 +19,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsetsController;
@@ -49,6 +50,9 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
 
     private static final long SHARE_FILE_TTL_MS = 24L * 60 * 60 * 1000;
     private static final String SHARE_IMAGE_DIR = "shared_images";
+    private static final String S1_HOST = "stage1st.com";
+    private static final String S1_FORUM_PATH = "/2b/forum.php";
+    private static final String S1_THREAD_PATH_PREFIX = "/2b/thread";
     private final Context context;
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
@@ -69,6 +73,51 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         } catch (Exception e) {
             ALog.w("Failed to open URL: ", e.getMessage());
         }
+    }
+
+    public void openAppOpenByDefaultSettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS);
+            intent.setData(Uri.parse("package:" + context.getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + context.getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        }
+    }
+
+    public void openS1Like(String href) {
+        callMethod("opens1like", href);
+    }
+
+    public void openS1LikeFromIntent(Intent intent) {
+        String href = resolveS1LikeFromIntent(intent);
+        if (href != null) {
+            openS1Like(href);
+        }
+    }
+
+    private String resolveS1LikeFromIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) {
+            return null;
+        }
+        Uri data = intent.getData();
+        if (data == null || !"https".equalsIgnoreCase(data.getScheme()) || !S1_HOST.equalsIgnoreCase(data.getHost())) {
+            return null;
+        }
+        String path = data.getPath();
+        if (path == null) {
+            return null;
+        }
+        boolean forumLink = S1_FORUM_PATH.equals(path) && data.getEncodedQuery() != null;
+        boolean threadLink = path.startsWith(S1_THREAD_PATH_PREFIX);
+        if (forumLink || threadLink) {
+            return data.toString();
+        }
+        return null;
     }
 
     public void copyTextToClipboard(String text) {

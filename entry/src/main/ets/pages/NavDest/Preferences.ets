@@ -345,6 +345,23 @@ export struct PreferencePage {
               fontSizeIndex: this.appState.fontSize
             })
             Column() {
+              if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+                Row() {
+                  Column({ space: SettingColumnSpace }) {
+                    this.TextPrimary('让S1链接可以用本应用打开')
+                    Text('点击前往系统设置，在“要在此应用中打开的链接”项目中，勾选stage1st.com')
+                      .attributeModifier(this.textSecondary)
+                  }.SettingColumn()
+
+                  Button('前往')
+                    .buttonStyle(ButtonStyleMode.NORMAL)
+                    .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                    .onClick(() => {
+                      PlatformBridge.openAppOpenByDefaultSettings()
+                    })
+                }.attributeModifier(this.settingRow)
+              }
+
               Row() {
                 Column({ space: SettingColumnSpace }) {
                   this.TextPrimary('尝试查看不可见内容')
