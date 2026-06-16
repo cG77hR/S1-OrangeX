@@ -9,6 +9,7 @@
 - 本仓库 = `origin`（`cG77hR/S1-OrangeX`），用 [ArkUI-X](https://gitcode.com/arkui-x) 把 HarmonyOS 代码跨平台到 Android（iOS 为占位）。
 - 源仓库 = `upstream`（`wly5556/S1-Orange`），纯 HarmonyOS Next。
 - 目标：**代码共通**。同一份 `entry/src/main/ets` 源码在两端都编译运行；平台差异用运行时分支隔离。
+- 当前分支已启用 **SDK26**。涉及兼容性判断时，以 **README 的 SDK26 列 + 当前代码** 为准。
 
 ## 目录结构（相对源仓库的增量）
 
@@ -83,29 +84,12 @@ export function buildNavDestPage(name: string) {
 3. `resources/base/profile/route_map.json`（**保留**，自动合入；ArkUI-X 虽不用，但留着以减少与 upstream 的无谓偏离）；
 4. ★ **本分支额外**：`pages/PageNameEnum.ets` 顶部 import `{ XxxPage }` + `buildNavDestPage()` 内加 `else if (name == PageNameEnum.Xxx) { XxxPage() }`。
 
-#### 3. SegmentButton 组件：必须替换为 Select
+#### 3. 设置项组件：当前 SDK26 分支保持 `SegmentButton`
 
-ArkUI-X **不支持** `@kit.ArkUI` 的 `SegmentButton` 组件（见 README 缺陷表）。本分支把所有 `common/component/preference/*Pref.ets` 设置项的 `SegmentButton` 改写成了 `Select`（下拉选择）。
+README 兼容性表已将 `SegmentButton` 标记为 **SDK26 可用**。因此：
 
-**合并 upstream 新增的设置项组件时**：若 upstream 新增的 `XxxPref.ets` 用了 `SegmentButton`，**必须改写为 `Select`**，参照 `HiddenPostPref.ets` / `AvatarCachePref.ets` 的写法：
-
-```ts
-// ❌ upstream 原写法（ArkUI-X 不支持）
-@State segmentOption: SegmentButtonOptions = SegmentButtonOptions.capsule({...})
-@State @Watch('selectedChanged') selected: EnumType[] = []   // 数组
-SegmentButton({ options: this.segmentOption, selectedIndexes: $selected })
-
-// ✅ 本分支写法
-@State @Watch('selectedChanged') selected: EnumType = EnumType.default   // 单值
-build() {
-  Select(TextArray.map(value => ({ value } as SelectOption)))
-    .font({ size: FontSizeEnum[this.appState.fontSize].vp16 })
-    .selected($$this.selected)
-    .value(TextArray[this.selected])
-}
-```
-
-注意 `selected` 从**数组**改为**单值**，`selectedChanged` 里去掉 `forEach`，直接 `conf.xxx = this.selected; this.appState.xxx = this.selected`。
+- **合并 upstream 新增的设置项组件时，默认保留 upstream 的 `SegmentButton` 写法**，与根目录 `AGENTS.md` 中的设置项模式保持一致。
+- 只有在当前 SDK26 环境里已经确认存在兼容问题时，才考虑改成别的控件方案。
 
 #### 4. 网络请求：保留 `Rcp`/`IRcpSession` 抽象，不要采用 upstream 的直接 rcp 调用
 
@@ -186,17 +170,18 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 
 ## 缺陷备忘（开发与合并时易踩坑，详见 README 表）
 
-- **`promptAction.showToast` 文字背景白色缺失（🟡）** → 一律用 `ArkUIX/Utils/ShowToast`，它在 Android 桥接到原生 Toast。**禁止**直接调用 `promptAction.showToast`。
+- **`promptAction.showToast`（SDK26 🟢，但仍统一封装）** → 当前 SDK26 上 README 已标记为已解决，但业务代码仍应一律走 `ArkUIX/Utils/ShowToast`，由它在 Android 侧桥接到原生 Toast。这样可以保持平台行为一致，也避免后续回归时到处排查。
 - **`Text` 首字符 emoji 时数字样式怪异（SDK14 🔴 / SDK19 🟢）**、**仅西文时字重变细（SDK19 🔴）**：UI 表现层问题，留意数字/西文渲染。
-- **`setColorMode` 跨平台失效（🔴）**：深浅色模式在 Android 走 `PlatformBridge.setNightMode` + 手动维护 `AppStorage(PropKey.currentColorMode)`（见 `ArkUIX/Utils/SetNightMode.ets` 与 `EntryAbility.ets`）。**不要**在业务代码里直接调 `context.setColorMode`，统一走 `SetNightMode()`。
+- **`setColorMode` 跨平台（SDK26 🟡）**：不要把业务逻辑直接绑到 `context.setColorMode` 上。深浅色模式在 Android 继续走 `PlatformBridge.setNightMode` + 手动维护 `AppStorage(PropKey.currentColorMode)`（见 `ArkUIX/Utils/SetNightMode.ets` 与 `EntryAbility.ets`），业务代码统一走 `SetNightMode()`。
 - **`request.agent` 下载需 header 认证时失败（🔴）**：Android 桥接层 `canMakeRequest` 会额外发一次不带 header 的预请求。用 `DownloadFile`（`ArkUIX/Utils/Download.ets`）规避，**不要**直接用 `request.agent`。
-- **`Image` svg `fillColor` 失效（SDK14 🔴 / SDK16 🟢）**：涉及 svg 图标着色时留意。
+- **`Image` svg `fillColor`（SDK26 🟢）**：当前可正常使用 `.fillColor(...)`。涉及 svg 图标着色时按现有写法保持即可。
 - **组件阴影 `shadow()` 失效（🔴）**：避免依赖阴影做视觉区分。
 - **`geometryTransition` 落点偏移**：`ThreadPostList` 里图片预览转场被临时改为 `TransitionEffect.opacity(0)`，合并 upstream 对该转场的改动时不要盲目恢复。
 - **子线程内 `vp2px` 未定义（🔴）**：`ImageKnife` 用了修改过的 har（`libs/ImageKnife3.2.0.har`），从主线程传 vp/px 比例；**不要**替换成 ohpm 上的原版。
 - **`setTimeout` 不传 delay 不执行回调（🔴）**：始终显式传 `delay`（哪怕是 0）。
-- **`request.agent`/相对时间格式化/JSON import 等 SDK 版本相关缺陷**：见 README 表中按 SDK 版本标注的状态，升级 SDK 时需重新验证。
-- **`Image` svg 仅支持path格式，<Rect><Rect /><g> ... <g/>的 svg 图标不支持
+- **`getComponentSnapshot` / 界面安全区监听（SDK26 🟢）**：这两项是当前可依赖能力。长截图与 Android 安全区桥接都基于它们实现。
+- **`request.agent`/相对时间格式化/JSON import 等 SDK 版本相关缺陷**：统一看 README 兼容性表的 **SDK26** 列。
+- **`Image` svg 仅支持 `path` 格式**：`<Rect><Rect /><g> ... <g/>` 这类 svg 图标仍可能不受支持，替换图标资源时留意。
 
 ## 提交习惯
 
@@ -208,7 +193,7 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 - [ ] `findstr /s /n "<<<<<<< >>>>>>>"` 在 `entry/src/main/ets` 下无命中。
 - [ ] **已审查 `git diff <merge-base> upstream/main` 的全部改动**，不只看有 conflict 的文件——auto-merged 的文件同样可能含跨平台缺陷（见上 §4「base/path 分离」）。
 - [ ] 新增的 NavDest 页面是否进了 `buildNavDestPage()` 分发表 + import。
-- [ ] 新增的设置项组件是否用了 `Select` 而非 `SegmentButton`。
+- [ ] 新增的设置项组件是否沿用了当前的 `SegmentButton` 模式。
 - [ ] 新增的网络请求是否走 `Rcp`/`IRcpSession` 而非直接 `rcp`。
 - [ ] **新增的网络请求是否 `new request(path, base)` 分离写法**——第一参不得是完整 `http(s)://` URL 或拼接了 `URL.WEB_BASE`/`URL.APP_BASE`。
 - [ ] 所有 `ShowToast` / `openInBrowser` / `CopyText` / `ShareXxx` 是否 import 自 `ArkUIX/Utils/`。

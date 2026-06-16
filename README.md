@@ -31,6 +31,7 @@
 | SegmentButton组件                | 🟡        | 🟡              |           | 🟢        | SDK26可用                                                                                              |
 | getComponentSnapshot           | 🔴        | 🔴              | 🔴        | 🟢        | 长截图依赖的API                                                                                            |
 | 界面安全区size监听                    | 🟡        | 🟡              | 🟡        | 🟢        | 桥接到Android API                                                                                       |
+| deviceInfo.apiAvailable        |           |                 |           | 🟡        | SDK26 beta1 中虽然文档标注支持跨平台，但实际不可调用；当前以 `deviceInfo.sdkApiVersion >= x` 作为替代判断                                 |
 
 🔴：问题不可绕过
 🟡：问题可绕过
