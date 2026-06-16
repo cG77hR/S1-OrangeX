@@ -47,6 +47,8 @@ import ohos.ace.adapter.capability.bridge.IMethodResult;
 
 public class Bridge extends BridgePlugin implements IMessageListener, IMethodResult {
 
+    private static final long SHARE_FILE_TTL_MS = 24L * 60 * 60 * 1000;
+    private static final String SHARE_IMAGE_DIR = "shared_images";
     private final Context context;
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
@@ -100,8 +102,13 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         File externalCacheDir = context.getExternalCacheDir();
         if (externalCacheDir == null) return;
 
+        File shareDir = new File(externalCacheDir, SHARE_IMAGE_DIR);
+        if (!shareDir.exists() && !shareDir.mkdirs()) return;
+
+        cleanupExpiredShareFiles(shareDir);
+
         String sharedName = ensureExtension(internalFile.getName(), ext);
-        File sharedFile = new File(externalCacheDir, sharedName);
+        File sharedFile = new File(shareDir, sharedName);
 
         try {
             try (FileChannel source = new FileInputStream(internalFile).getChannel();
@@ -138,6 +145,26 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             return filename;
         }
         return filename + '.' + normalized;
+    }
+
+    private static void cleanupExpiredShareFiles(File shareDir) {
+        File[] shareFiles = shareDir.listFiles();
+        if (shareFiles == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        for (File shareFile : shareFiles) {
+            if (!shareFile.isFile()) {
+                continue;
+            }
+            long age = now - shareFile.lastModified();
+            if (age <= SHARE_FILE_TTL_MS) {
+                continue;
+            }
+            if (!shareFile.delete()) {
+                ALog.w("Bridge", "Failed to delete expired shared file: " + shareFile.getAbsolutePath());
+            }
+        }
     }
 
     public void setWindowSystemBarProperties(boolean isDarkFont) {
