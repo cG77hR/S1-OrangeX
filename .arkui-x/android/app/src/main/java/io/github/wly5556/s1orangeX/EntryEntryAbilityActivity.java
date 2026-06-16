@@ -66,6 +66,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
         });
         setInstanceName("io.github.wly5556.s1orangeX:entry:EntryAbility:");
         super.onCreate(savedInstanceState);
+        dispatchProcessTextActions();
         dispatchOpenS1Like(getIntent());
     }
 
@@ -83,6 +84,15 @@ public class EntryEntryAbilityActivity extends StageActivity {
             return;
         }
         contentView.postDelayed(() -> getBridgeInstance().openS1LikeFromIntent(intent), OPEN_S1_LINK_DISPATCH_DELAY_MS);
+    }
+
+    private void dispatchProcessTextActions() {
+        View contentView = findViewById(android.R.id.content);
+        if (contentView == null) {
+            getBridgeInstance().dispatchProcessTextActions();
+            return;
+        }
+        contentView.postDelayed(() -> getBridgeInstance().dispatchProcessTextActions(), OPEN_S1_LINK_DISPATCH_DELAY_MS);
     }
 
     public static final int PICK_IMAGES_REQUEST_CODE = 1001;

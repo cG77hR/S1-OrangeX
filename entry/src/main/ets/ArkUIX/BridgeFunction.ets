@@ -19,6 +19,9 @@ enum BridgeFunction {
   getSdkInt = "getSdkInt",
   getWindowInset = "getWindowInset",
   openAppOpenByDefaultSettings = "openAppOpenByDefaultSettings",
+  getProcessTextActions = "getProcessTextActions",
+  processSelectedText = "processSelectedText",
+  onProcessTextActions = "onProcessTextActions",
   opens1like = "opens1like"
 }
 
@@ -26,6 +29,7 @@ type BridgeCallback = (...parameters: bridge.Message[]) => bridge.ResultValue
 type WindowInsetsListener = (statusBarInset: number, navigationBarInset: number, keyboardInset: number) => bridge.ResultValue
 type UiModeChangeListener = (darkMode: boolean) => bridge.ResultValue
 type OpenS1LikeListener = (href: string) => bridge.ResultValue
+type ProcessTextActionsListener = (actionsJson: string) => bridge.ResultValue
 
 class PlatformBridgeClass {
   private bridgeImpl: bridge.BridgeObject | undefined = undefined
@@ -139,6 +143,16 @@ class PlatformBridgeClass {
     return impl.callMethod(BridgeFunction.openAppOpenByDefaultSettings)
   }
 
+  async getProcessTextActions(): Promise<string> {
+    const impl = await this.getImpl()
+    return await impl.callMethod(BridgeFunction.getProcessTextActions) as string
+  }
+
+  async processSelectedText(actionId: string, text: string) {
+    const impl = await this.getImpl()
+    return impl.callMethod(BridgeFunction.processSelectedText, actionId, text)
+  }
+
   private async pushRegisterMethod(callback: BridgeCallback, functionName: BridgeFunction) {
     const impl = await this.getImpl()
     impl.registerMethod({
@@ -161,6 +175,10 @@ class PlatformBridgeClass {
 
   async onOpenS1Like(callback: OpenS1LikeListener) {
     this.pushRegisterMethod(callback as BridgeCallback, BridgeFunction.opens1like)
+  }
+
+  async onProcessTextActions(callback: ProcessTextActionsListener) {
+    await this.pushRegisterMethod(callback as BridgeCallback, BridgeFunction.onProcessTextActions)
   }
 }
 

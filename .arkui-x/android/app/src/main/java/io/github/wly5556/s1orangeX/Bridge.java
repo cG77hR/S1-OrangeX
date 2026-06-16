@@ -7,10 +7,14 @@ import android.app.UiModeManager;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
@@ -38,6 +42,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import ohos.ace.adapter.ALog;
@@ -46,6 +51,10 @@ import ohos.ace.adapter.capability.bridge.BridgePlugin;
 import ohos.ace.adapter.capability.bridge.IMessageListener;
 import ohos.ace.adapter.capability.bridge.IMethodResult;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class Bridge extends BridgePlugin implements IMessageListener, IMethodResult {
 
     private static final long SHARE_FILE_TTL_MS = 24L * 60 * 60 * 1000;
@@ -53,7 +62,10 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
     private static final String S1_HOST = "stage1st.com";
     private static final String S1_FORUM_PATH = "/2b/forum.php";
     private static final String S1_THREAD_PATH_PREFIX = "/2b/thread";
+    private static final String PROCESS_TEXT_MIME_TYPE = "text/plain";
     private final Context context;
+    private final Map<String, ComponentName> processTextComponents = new HashMap<>();
+    private String processTextActionsJson = "[]";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
     Bridge(Context context, String name, BridgeManager bridgeManager) {
@@ -61,6 +73,7 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         this.context = context;
         setMethodResultListener(this);
         setMessageListener(this);
+        refreshProcessTextActions();
     }
 
     public void openInBrowser(String url) {
@@ -148,6 +161,87 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         } catch (ActivityNotFoundException e) {
             ALog.w("ShareUtils", "No application can handle sharing");
         }
+    }
+
+    public void refreshProcessTextActions() {
+        PackageManager packageManager = context.getPackageManager();
+        Intent queryIntent = new Intent(Intent.ACTION_PROCESS_TEXT);
+        queryIntent.setType(PROCESS_TEXT_MIME_TYPE);
+
+        List<ResolveInfo> resolveInfos = queryProcessTextActivities(packageManager, queryIntent);
+        JSONArray actions = new JSONArray();
+        Map<String, ComponentName> components = new HashMap<>();
+
+        for (ResolveInfo resolveInfo : resolveInfos) {
+            ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null ||
+                    (!activityInfo.exported && !context.getPackageName().equals(activityInfo.packageName))) {
+                continue;
+            }
+            CharSequence label = resolveInfo.loadLabel(packageManager);
+            if (label == null || label.length() == 0) {
+                continue;
+            }
+            String id = activityInfo.packageName + "/" + activityInfo.name;
+            ComponentName componentName = new ComponentName(activityInfo.packageName, activityInfo.name);
+            try {
+                JSONObject action = new JSONObject();
+                action.put("id", id);
+                action.put("label", label.toString());
+                actions.put(action);
+                components.put(id, componentName);
+            } catch (JSONException e) {
+                ALog.w("Bridge", "Failed to pack process text action: " + e.getMessage());
+            }
+        }
+
+        processTextComponents.clear();
+        processTextComponents.putAll(components);
+        processTextActionsJson = actions.toString();
+    }
+
+    public String getProcessTextActions() {
+        return processTextActionsJson;
+    }
+
+    public void dispatchProcessTextActions() {
+        callMethod("onProcessTextActions", processTextActionsJson);
+    }
+
+    public void processSelectedText(String actionId, String text) {
+        ComponentName componentName = processTextComponents.get(actionId);
+        if (componentName == null) {
+            refreshProcessTextActions();
+            componentName = processTextComponents.get(actionId);
+        }
+        if (componentName == null) {
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_PROCESS_TEXT);
+        intent.setType(PROCESS_TEXT_MIME_TYPE);
+        intent.setComponent(componentName);
+        intent.putExtra(Intent.EXTRA_PROCESS_TEXT, text);
+        intent.putExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, true);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        try {
+            context.startActivity(intent);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            showToast("无法处理选中文本");
+            ALog.w("Bridge", "Failed to process selected text: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private List<ResolveInfo> queryProcessTextActivities(PackageManager packageManager, Intent queryIntent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return packageManager.queryIntentActivities(
+                    queryIntent,
+                    PackageManager.ResolveInfoFlags.of(0)
+            );
+        }
+        return packageManager.queryIntentActivities(queryIntent, 0);
     }
 
     public void shareImage(String path, String ext) {

@@ -17,6 +17,7 @@ import { AssetStoreInit } from '../ArkUIX/Asset/AssetStore';
 import { PlatformBridge } from '../ArkUIX/BridgeFunction';
 import bridge from '@arkui-x.bridge';
 import { loadUserTags } from '../common/dataStore/UserTag';
+import { initProcessTextActions } from '../ArkUIX/Utils/ProcessTextActions';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -78,6 +79,7 @@ export default class EntryAbility extends UIAbility {
       if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
         // pass
       } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+        initProcessTextActions()
         PlatformBridge.onUiModeChanged((darkMode: boolean): bridge.ResultValue => {
           PreferenceManager.readonly(conf => {
             if(conf.dark_mode_follow_system) {
