@@ -66,6 +66,7 @@ import { LongScreenshotPageParam, openLongScreenshot } from './LongScreenshot'
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { ThreadPostAttachmentItem } from '../../common/component/ThreadPostAttachmentItem'
 import { UserCreditText } from '../../common/component/UserCredit'
+import { openFreeCopy } from './FreeCopy'
 
 export interface PostViewModel {
   node: UIRootNode[]
@@ -84,6 +85,11 @@ export interface LongScreenshotPost {
   post: LongScreenshotPostViewModel
   floorNumber: string
   ratingInfo?: ThreadRatingInfo
+}
+
+export interface LongScreenshotPollForShot {
+  pollList: PollOptionVM[]
+  pollInfo: PollInfoVM
 }
 
 export interface ThreadPostParam {
@@ -134,6 +140,7 @@ export struct ThreadPostList {
   @Provide longScreenshotMode: boolean = false
   @Provide @Watch('selectedPostsChanged') selectedPostsForShot: Map<string, LongScreenshotPost> = new Map
   @Provide @Watch('consumePostForShot') mainPostForShot?: LongScreenshotPost = undefined
+  @Provide pollForShot?: LongScreenshotPollForShot = undefined
   mainPostReturnPage: number = -1
   @State selectedCount: number = 0
   @Provide contentVisible: boolean = true
@@ -242,6 +249,9 @@ export struct ThreadPostList {
       typeid: this.pageParam.typeid,
       posts,
       ratingInfoMap
+    }
+    if (this.pollForShot !== undefined) {
+      param.poll = this.pollForShot
     }
     openLongScreenshot(this.pathStack, param)
     this.exitLongScreenshotMode()
@@ -584,6 +594,7 @@ struct SinglePostPage {
   @Consume longScreenshotMode: boolean
   @Consume selectedPostsForShot: Map<string, LongScreenshotPost>
   @Consume mainPostForShot?: LongScreenshotPost
+  @Consume pollForShot?: LongScreenshotPollForShot
   @State isLoading: boolean = true
   postDataSource: ArrayDataSource<PostViewModel> = new ArrayDataSource()
   postStringify: Map<string, string> = new Map
@@ -697,6 +708,7 @@ struct SinglePostPage {
       return
     }
     const mainPost = await this.makePostForShot(posts[0], 0)
+    mainPost.floorNumber = '1'
     this.mainPostForShot = mainPost
   }
 
@@ -788,10 +800,19 @@ struct SinglePostPage {
     const postRating = new Map<string, ThreadRatingInfo | undefined>()
     Object.keys(v.Variables.comments).forEach(pid => postRating.set(pid, undefined))
     this.postRatingInfo = postRating
-    if (this.pageToLoad == 1 && v.Variables.special_poll) {
-      const pollData = v.Variables.special_poll
-      this.pollInfo = getPollInfo(pollData)
-      this.pollList = getPollList(pollData)
+    if (this.pageToLoad == 1) {
+      if (v.Variables.special_poll) {
+        const pollData = v.Variables.special_poll
+        this.pollInfo = getPollInfo(pollData)
+        this.pollList = getPollList(pollData)
+        this.pollForShot = {
+          pollList: this.pollList,
+          pollInfo: this.pollInfo
+        }
+      } else {
+        this.pollList = []
+        this.pollForShot = undefined
+      }
     }
   }
 
@@ -1216,6 +1237,14 @@ struct SinglePostPage {
                   }
                 },
                   {
+                    value: "自由复制",
+                    action: () => {
+                      openFreeCopy(this.pathStack, {
+                        node: post.node
+                      })
+                    }
+                  },
+                  {
                     value: "举报",
                     action: () => {
                       openReportPost({
@@ -1375,6 +1404,7 @@ struct SinglePostPage {
         ListItem() {
           BottomSafeArea()
         }
+
         if (this.longScreenshotMode) {
           ListItem() {
             Row()

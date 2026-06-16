@@ -316,7 +316,7 @@ export struct UserSpace {
                   }.attributeModifier(new RoundPanel(this.appTheme.backgroundSecondary))
                 }
                 Row() {
-                  GridRow({ gutter: 1 }) {
+                  GridRow({ gutter: 1, columns: 12 }) {
                     ForEach(this.userSpace.dates, (item: dateInfoVM) => {
                       GridCol({
                         span: {
@@ -337,7 +337,7 @@ export struct UserSpace {
                 .transition(TransitionEffect.translate({ y: -35 }).animation(SpringCurve))
 
                 Row() {
-                  GridRow({ gutter: 1 }) {
+                  GridRow({ gutter: 1, columns: 12 }) {
                     ForEach(this.userSpace.extcredits, (item: ExtCreditVM) => {
                       GridCol({
                         span: {
