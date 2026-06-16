@@ -583,10 +583,9 @@ export function ThreadPostUINodeRender(param: ThreadPostUINodeRenderParam) {
             .opacity(0.7)
             .fontSize(FontSizeEnum[param.fontSize].vp15)
         } else if (node.name == UINodeName.Attach) {
-          const attach = param.getAttachInfo(node.attribute)
-          if (attach !== undefined) {
+          if (param.getAttachInfo(node.attribute) !== undefined) {
             ThreadPostAttachmentItem({
-              attach,
+              attach: param.getAttachInfo(node.attribute),
               appTheme: param.appTheme,
               fontSize: param.fontSize
             })

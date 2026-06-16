@@ -179,6 +179,7 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 - **`geometryTransition` 落点偏移**：`ThreadPostList` 里图片预览转场被临时改为 `TransitionEffect.opacity(0)`，合并 upstream 对该转场的改动时不要盲目恢复。
 - **子线程内 `vp2px` 未定义（🔴）**：`ImageKnife` 用了修改过的 har（`libs/ImageKnife3.2.0.har`），从主线程传 vp/px 比例；**不要**替换成 ohpm 上的原版。
 - **`setTimeout` 不传 delay 不执行回调（🔴）**：始终显式传 `delay`（哪怕是 0）。
+- **ArkTS 声明式 Builder 分支里不要擅自提取局部变量**：像 `if (...) { Xxx({ prop: someCall() }) }` 这种 upstream 原写法，迁移时**不要**为了“避免重复调用”改成 `const v = someCall(); if (v !== undefined) { Xxx({ prop: v }) }` 再直接塞进 `@Builder` / `ForEach` / `if` 的 UI 分支里。ArkTS 对声明式语法比普通 TS 更严格，这类局部声明很容易直接语法错误。若确实要消除重复调用，优先提到普通方法里，或先确认该位置允许局部变量声明。
 - **`getComponentSnapshot` / 界面安全区监听（SDK26 🟢）**：这两项是当前可依赖能力。长截图与 Android 安全区桥接都基于它们实现。
 - **`request.agent`/相对时间格式化/JSON import 等 SDK 版本相关缺陷**：统一看 README 兼容性表的 **SDK26** 列。
 - **`Image` svg 仅支持 `path` 格式**：`<Rect><Rect /><g> ... <g/>` 这类 svg 图标仍可能不受支持，替换图标资源时留意。
@@ -199,6 +200,7 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 - [ ] 所有 `ShowToast` / `openInBrowser` / `CopyText` / `ShareXxx` 是否 import 自 `ArkUIX/Utils/`。
 - [ ] upstream 引入的 `promptAction.showToast` 是否已替换为 `ShowToast`。
 - [ ] `setColorMode` 调用是否走 `SetNightMode()`。
+- [ ] 若在 `@Builder` / `ForEach` / 声明式 `if` 分支里为了“提取重复调用”改写了 upstream 代码，是否确认该位置允许局部变量声明，未引入 ArkTS 语法错误。
 - [ ] 平台相关常量/链接（如 releases）是否按平台区分。
 
 ## 环境
