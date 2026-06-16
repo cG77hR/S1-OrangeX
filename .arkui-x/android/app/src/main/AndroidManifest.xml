@@ -15,6 +15,7 @@
             android:theme="@style/FullScreenTheme">
         <activity android:exported="true" android:name=".EntryEntryAbilityActivity"
                   android:windowSoftInputMode="adjustResize |stateHidden"
+                  android:launchMode="singleTask"
                   android:configChanges="orientation|keyboard|layoutDirection|screenSize|uiMode|smallestScreenSize|density"
         >
             <intent-filter>

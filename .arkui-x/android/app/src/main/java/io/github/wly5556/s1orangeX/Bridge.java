@@ -101,11 +101,17 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
     }
 
     private String resolveS1LikeFromIntent(Intent intent) {
-        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) {
+        if (intent == null) {
+            return null;
+        }
+        if (!Intent.ACTION_VIEW.equals(intent.getAction())) {
             return null;
         }
         Uri data = intent.getData();
-        if (data == null || !"https".equalsIgnoreCase(data.getScheme()) || !S1_HOST.equalsIgnoreCase(data.getHost())) {
+        if (data == null) {
+            return null;
+        }
+        if (!"https".equalsIgnoreCase(data.getScheme()) || !S1_HOST.equalsIgnoreCase(data.getHost())) {
             return null;
         }
         String path = data.getPath();
