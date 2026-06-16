@@ -307,6 +307,7 @@ export struct UserSpace {
                           onImgClick: (url: string, index: number): void => {
 
                           },
+                          getAttachInfo: (aid: string) => undefined,
                           lazyLoadImage: true,
                           adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust
                         })

@@ -56,7 +56,6 @@ import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { HiddenPostDisplay } from '../../config/v1/default'
 import { LengthUnit } from '@kit.ArkUI'
 import { PropKey, SafeArea } from '../../common/Constants'
-import { DownloadFile } from '../../ArkUIX/Utils/Download'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { openReportPost } from './ReportPost'
 import { plainTextSerializer } from '../../common/component/ThreadPostContentSerializer'
@@ -65,6 +64,8 @@ import { UserTagDialog } from '../../common/component/UserTagDialog'
 import { getUserTagsCopy } from '../../common/dataStore/UserTag'
 import { LongScreenshotPageParam, openLongScreenshot } from './LongScreenshot'
 import { deviceInfo } from '@kit.BasicServicesKit';
+import { ThreadPostAttachmentItem } from '../../common/component/ThreadPostAttachmentItem'
+import { UserCreditText } from '../../common/component/UserCredit'
 
 export interface PostViewModel {
   node: UIRootNode[]
@@ -72,11 +73,15 @@ export interface PostViewModel {
   username: string,
   pid: string,
   timestamp: Date,
-  userCredit: string
+  userCredit: number
+}
+
+export interface LongScreenshotPostViewModel extends PostViewModel {
+  attachments?: Record<string, Attachment>
 }
 
 export interface LongScreenshotPost {
-  post: PostViewModel
+  post: LongScreenshotPostViewModel
   floorNumber: string
   ratingInfo?: ThreadRatingInfo
 }
@@ -378,7 +383,7 @@ export struct ThreadPostList {
             .height(36)
             .padding({ left: 14, right: 10 })
             .borderRadius(18)
-            .backgroundColor(this.appTheme.backgroundSecondary)
+            .backgroundColor(this.appTheme.backgroundTertiary)
             .shadow(ShadowStyle.OUTER_DEFAULT_SM)
 
             Row({ space: 8 }) {
@@ -539,6 +544,7 @@ export struct ThreadPostList {
 }
 
 const BOTTOM_LOADING_AREA = 80
+const LONG_SCREENSHOT_PICKER_BOTTOM_SPACER = 132
 const PULL_UP_LOADING_INTERVAL = 500 // ms
 
 interface floorParam {
@@ -606,7 +612,8 @@ struct SinglePostPage {
     allowvote: SpecialPollAllowVote.ALLOW
   }
   @Provide postRatingInfo: Map<string, ThreadRatingInfo | undefined> = new Map
-  @State postAttachment: Map<string, Attachment[]> = new Map
+  @State postAttachment: Map<string, Record<string, Attachment>> = new Map
+  consumedAttachmentAid: Set<string> = new Set
   @Consume contentVisible: boolean
   @State pinnedPost: PostViewModel | undefined = undefined
   pullUpStartOffset: number = 0
@@ -617,7 +624,9 @@ struct SinglePostPage {
     builder: UserTagDialog({
       uid: this.tagDialogPost ? this.tagDialogPost.uid : '',
       username: this.tagDialogPost ? this.tagDialogPost.username : '',
-      userCredit: this.tagDialogPost ? this.tagDialogPost.userCredit : '',
+      userCredit: this.tagDialogPost ? this.tagDialogPost.userCredit : 0,
+      appTheme: this.appTheme,
+      fontSize: this.appState.fontSize,
       onTagChanged: (uid: string) => {
         this.tagMap.set(uid, getUserTagsCopy(uid))
       }
@@ -702,6 +711,8 @@ struct SinglePostPage {
     } else {
       this.postHidden.clear()
       this.postHiddenExpand.clear()
+      this.postAttachment.clear()
+      this.consumedAttachmentAid.clear()
       const pageFloorStart = POST_PER_PAGE * (this.pageToLoad - 1)
       if (pageFloorStart >= 10000) {
         this.indexerFontSize = 8
@@ -714,15 +725,15 @@ struct SinglePostPage {
 
       rawPostList.forEach((p, i) => {
         if (p.attachments) {
+          const attachMap: Record<string, Attachment> = {}
           Object.values(p.attachments).forEach(attach => {
             if (attach.isimage === '0') {
-              if (!this.postAttachment.has(p.pid)) {
-                this.postAttachment.set(p.pid, [])
-              }
-              const attachList = this.postAttachment.get(p.pid)
-              attachList!.push(attach)
+              attachMap[attach.aid] = attach
             }
           })
+          if (Object.keys(attachMap).length > 0) {
+            this.postAttachment.set(p.pid, attachMap)
+          }
         }
         if (p.groupid === '4') {
           parseXML([p]).forEach((root) => {
@@ -752,7 +763,7 @@ struct SinglePostPage {
                   username: p.author,
                   pid: p.pid,
                   timestamp: new Date(parseInt(p.dbdateline) * 1000),
-                  userCredit: ''
+                  userCredit: 0
                 }
               }
             }
@@ -800,8 +811,7 @@ struct SinglePostPage {
         username: rawPostList[index].author,
         pid: rawPostList[index].pid.toString(),
         timestamp: new Date(rawPostList[index].dateline * 1000),
-        userCredit: rawPostList[index].e ?
-          '(' + (rawPostList[index].e >= 0 ? '+' : '') + rawPostList[index].e.toString() + ')' : '(+0)'
+        userCredit: rawPostList[index].e
       }
       this.postStringify.set(vm.pid, JSON.stringify(post.node))
       postArray.push(vm)
@@ -996,7 +1006,15 @@ struct SinglePostPage {
       }
     }
     return {
-      post,
+      post: {
+        node: post.node,
+        uid: post.uid,
+        username: post.username,
+        pid: post.pid,
+        timestamp: post.timestamp,
+        userCredit: post.userCredit,
+        attachments: this.postAttachment.get(post.pid)
+      },
       floorNumber: this.getFloorNumber(compIndex),
       ratingInfo,
     }
@@ -1013,8 +1031,16 @@ struct SinglePostPage {
     this.selectedPostsForShot = newMap
   }
 
+  getAttachInfo(pid: string, aid: string): Attachment | undefined {
+    const attach = this.postAttachment.get(pid)?.[aid]
+    if (attach !== undefined) {
+      this.consumedAttachmentAid.add(aid)
+    }
+    return attach
+  }
+
   @LocalBuilder
-  buildPostContent(nodes: UIRootNode[]) {
+  buildPostContent(nodes: UIRootNode[], pid: string) {
     ForEach(nodes, (uiRoot: UIRootNode) => {
       ThreadPostUINodeRender({
         uiRoot: uiRoot,
@@ -1030,6 +1056,7 @@ struct SinglePostPage {
         onImgClick: (url: string, index: number): void => {
           this.openImageViewer(this.imgUrl, index)
         },
+        getAttachInfo: (aid: string): Attachment | undefined => this.getAttachInfo(pid, aid),
         lazyLoadImage: true,
         adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust
       })
@@ -1095,9 +1122,7 @@ struct SinglePostPage {
                 .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
                 .copyOption(this.appState.textCopyable ? CopyOptions.LocalDevice : CopyOptions.None)
               if (this.appState.showCredit) {
-                Text(post.userCredit)
-                  .fontSize(FontSizeEnum[this.appState.fontSize].vp13)
-                  .opacity(0.7)
+                UserCreditText(post.userCredit, this.appTheme, this.appState.fontSize)
               }
               if (post.uid == this.threadAuthorUid) {
                 Text('楼')
@@ -1233,17 +1258,17 @@ struct SinglePostPage {
         if (!this.postHidden.has(post.pid) ||
           this.appState.hiddenPostDisplay == HiddenPostDisplay.visibleWithoutHiddenReason) {
           if (post.node.length > 0) {
-            this.buildPostContent(post.node)
+            this.buildPostContent(post.node, post.pid)
           } else if (this.postHidden.has(post.pid)) {
-            this.buildPostContent(this.postHidden.get(post.pid) || [])
+            this.buildPostContent(this.postHidden.get(post.pid) || [], post.pid)
           }
         } else {
-          this.buildPostContent(this.postHidden.get(post.pid) || [])
+          this.buildPostContent(this.postHidden.get(post.pid) || [], post.pid)
           if (this.appState.hiddenPostDisplay == HiddenPostDisplay.visible ||
             this.postHiddenExpand.has(post.pid)) {
             Column() {
               if (post.node.length > 0) {
-                this.buildPostContent(post.node)
+                this.buildPostContent(post.node, post.pid)
               } else {
                 Text() {
                   ImageSpan($r('app.media.face_253_akarin'))
@@ -1283,35 +1308,14 @@ struct SinglePostPage {
         }
 
         if (this.postAttachment.has(post.pid)) {
-          ForEach(this.postAttachment.get(post.pid), (attach: Attachment) => {
-            Row({ space: 12 }) {
-              Image($r('app.media.arrow_right_folder_circle')).width(26).height(26)
-                .fillColor(this.appTheme.fontEmphasize)
-              Column({ space: 6 }) {
-                Text(attach.filename)
-                  .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
-                  .wordBreak(WordBreak.BREAK_ALL)
-                Text(`${attach.attachsize}   ${attach.downloads}次下载`)
-                  .fontSize(FontSizeEnum[this.appState.fontSize].vp12)
-                  .opacity(.7)
-              }.flexGrow(100)
-              .flexShrink(1)
-              .alignItems(HorizontalAlign.Start)
-
-              Button('下载')
-                .buttonStyle(ButtonStyleMode.NORMAL)
-                .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
-                .onClick(() => {
-                  DownloadFile(this.context, attach.filename,
-                    URL.WEB_BASE + URL.ATTACHMENT_DOWNLOAD + attach.aidencode)
-                })
+          ForEach(Object.values(this.postAttachment.get(post.pid) || {}), (attach: Attachment) => {
+            if (!this.consumedAttachmentAid.has(attach.aid)) {
+              ThreadPostAttachmentItem({
+                attach,
+                appTheme: this.appTheme,
+                fontSize: this.appState.fontSize
+              })
             }
-            .backgroundColor(this.appTheme.backgroundTertiary)
-            .padding(12)
-            .borderRadius(12)
-            .alignItems(VerticalAlign.Center)
-            .width('100%')
-            .margin({ top: 8 })
           }, (attach: Attachment) => attach.aid)
         }
 
@@ -1370,6 +1374,13 @@ struct SinglePostPage {
         }, (post: PostViewModel, index: number) => this.postStringify.get(post.pid) + index.toString())
         ListItem() {
           BottomSafeArea()
+        }
+        if (this.longScreenshotMode) {
+          ListItem() {
+            Row()
+              .width('100%')
+              .height(LONG_SCREENSHOT_PICKER_BOTTOM_SPACER)
+          }
         }
       }
       .opacity(this.contentVisible ? (this.isLoading ? 0.8 : 1) : 0)

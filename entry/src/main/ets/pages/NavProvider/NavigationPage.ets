@@ -33,6 +33,7 @@ import { PostSignature } from '../../common/PostSignature'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { SetNightMode } from '../../ArkUIX/Utils/SetNightMode'
 import { checkVersionOnStartup } from '../../common/VersionCheck'
+import { FontSizeSetup } from '../../common/fontSize/FontSizeEnum'
 
 enum NavigationProvider {
   ForumGroupView = 'ForumGroupView',
@@ -124,6 +125,7 @@ struct NavigationPage {
       this.appState.textCopyable = conf.post_copyable
       this.appState.postAlphabetIndexer = conf.post_alphabet_indexer
       this.appState.showCredit = conf.show_credit
+      FontSizeSetup(conf.font_size)
       this.appState.fontSize = conf.font_size
       this.appState.fontSizeOverride = conf.font_size_override
       this.appState.darkModeContentColorAdjust = conf.dark_mode_content_color_adjust
