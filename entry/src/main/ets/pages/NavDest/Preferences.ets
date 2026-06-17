@@ -8,6 +8,7 @@ import { ThemeSelectPanel } from '../../common/component/preference/ThemeSelect'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { PreferenceManager } from '../../config/UserConfig'
 import { common, ConfigurationConstant } from '@kit.AbilityKit'
+import { promptAction } from '@kit.ArkUI'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { FontSize, FontSizeEnum, FontSizeSetup } from '../../common/fontSize/FontSizeEnum'
 import {
@@ -37,6 +38,15 @@ import { clearSmilyImageCache } from '../../common/dataStore/SmilyCache'
 import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
 import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
 import { SliderReset } from '../../common/component/SliderReset'
+import {
+  exportPersonalData,
+  formatPersonalDataTime,
+  importPersonalDataBundle,
+  PersonalDataBundle,
+  selectPersonalDataBundle
+} from '../../common/dataStore/PersonalDataBackup'
+import { Event } from '../../common/Events'
+import { waitFor } from '../../common/AwaitUtil'
 
 export interface PreferenceParam {}
 
@@ -61,15 +71,39 @@ export struct PreferencePage {
   @State postSignatureDisplayText: string = PostSignature.displayText()
   @State aniSpeedRatio: number = AniSpeed.ratio
   @State warnDarkModeSwitch: boolean = false
+  @State personalDataWorking: boolean = false
 
   aboutToAppear(): void {
     this.imageCacheUsage = ImageKnife.getInstance().getFileCache()?.currentMemory ?? 0
     getApiCacheState().then(v => this.apiCacheUsage = v)
+    this.reloadConfigState()
+  }
+
+  reloadConfigState() {
     PreferenceManager.readonly(conf => {
       this.darkModeFollowSys = conf.dark_mode_follow_system
       this.showTopThread = conf.show_top_thread
       this.postSignature = conf.post_signature
       this.postSignatureDeviceInfo = conf.post_signature_device_info
+      this.aniSpeedRatio = conf.ani_speed_ratio
+      this.appState.textCopyable = conf.post_copyable
+      this.appState.postAlphabetIndexer = conf.post_alphabet_indexer
+      this.appState.showCredit = conf.show_credit
+      FontSizeSetup(conf.font_size)
+      this.appState.fontSize = conf.font_size
+      this.appState.fontSizeOverride = conf.font_size_override
+      this.appState.darkModeContentColorAdjust = conf.dark_mode_content_color_adjust
+      this.appState.hiddenPostDisplay = conf.hidden_post_display
+      this.appState.splitMode = conf.split_mode
+      this.appState.threadItemGap = conf.thread_item_gap
+      this.appState.contentLineSpace = conf.content_line_space
+      this.appState.updateCheckInterval = conf.update_check_interval
+      AnimationSetUp(conf.ani_speed_ratio)
+      PostSignature.init(conf.post_signature,
+        this.context.resourceManager.getStringSync($r('app.string.app_name').id),
+        conf.post_signature_device_info)
+      this.postSignatureDisplayText = PostSignature.displayText()
+      SetNightMode(conf, this.context.getApplicationContext())
     })
     if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
       PlatformBridge.getSdkInt().then(SDK_INT => {
@@ -78,6 +112,76 @@ export struct PreferencePage {
           this.warnDarkModeSwitch = true
         }
       })
+    }
+  }
+
+  async exportPersonalDataAction() {
+    if (this.personalDataWorking) {
+      return
+    }
+    this.personalDataWorking = true
+    try {
+      const path = await exportPersonalData(this.context)
+      if (path) {
+        ShowToast({
+          message: '个人数据已导出',
+          duration: 3000
+        })
+      }
+    } catch (e) {
+      ShowToast({
+        message: '个人数据导出失败'
+      })
+    } finally {
+      this.personalDataWorking = false
+    }
+  }
+
+  async importPersonalDataAction() {
+    if (this.personalDataWorking) {
+      return
+    }
+    this.personalDataWorking = true
+    try {
+      const bundle: PersonalDataBundle | undefined = await selectPersonalDataBundle(this.context)
+      if (bundle == undefined) {
+        return
+      }
+      const result = await promptAction.showDialog({
+        title: '导入个人数据',
+        message: `数据导出时间：${formatPersonalDataTime(bundle.exportedAt)}\n导入后会覆盖现有的用户账户、历史记录、设置项、草稿和关键词屏蔽。\n\n导入后需要重新进入应用。`,
+        buttons: [
+          {
+            text: '取消',
+            color: $r('sys.color.font_secondary')
+          },
+          {
+            text: '确认导入',
+            color: $r('sys.color.alert')
+          }
+        ]
+      })
+      if (result.index == 1) {
+        await importPersonalDataBundle(bundle)
+        this.reloadConfigState()
+        this.context.eventHub.emit(Event.LightModeThemeSwitched)
+        ShowToast({
+          message: '导入成功，即将退出应用，请重新启动它',
+          duration: 3000
+        })
+        await waitFor(1000)
+        try {
+          await this.context.terminateSelf()
+        } catch (e) {
+          console.error(`Terminate self failed: ${JSON.stringify(e)}`)
+        }
+      }
+    } catch (e) {
+      ShowToast({
+        message: '个人数据导入失败'
+      })
+    } finally {
+      this.personalDataWorking = false
     }
   }
 
@@ -471,7 +575,7 @@ export struct PreferencePage {
                       .then(() => {
                         this.imageCacheUsage =
                           ImageKnife.getInstance().getFileCache().currentMemory
-                        this.getUIContext().getPromptAction().showToast({
+                        ShowToast({
                           message: '图片缓存已清空'
                         })
                       })
@@ -520,6 +624,29 @@ export struct PreferencePage {
                         })
                     })
                 }
+              }.attributeModifier(this.settingRow)
+            }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
+
+            SettingGroupHeader({
+              text: '个人数据',
+              fontSizeIndex: this.appState.fontSize
+            })
+            Column() {
+              Row({ space: 12 }) {
+                Button('导出')
+                  .buttonStyle(ButtonStyleMode.NORMAL)
+                  .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                  .enabled(!this.personalDataWorking)
+                  .opacity(this.personalDataWorking ? 0.7 : 1)
+                  .layoutWeight(1)
+                  .onClick(() => this.exportPersonalDataAction())
+                Button('导入')
+                  .buttonStyle(ButtonStyleMode.NORMAL)
+                  .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                  .enabled(!this.personalDataWorking)
+                  .opacity(this.personalDataWorking ? 0.7 : 1)
+                  .layoutWeight(1)
+                  .onClick(() => this.importPersonalDataAction())
               }.attributeModifier(this.settingRow)
             }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
 

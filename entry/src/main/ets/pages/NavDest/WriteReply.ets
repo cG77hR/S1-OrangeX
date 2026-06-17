@@ -29,6 +29,8 @@ import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
 import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
 import { dupTextRange } from '../../common/TextUtil'
+import { bbCodeSerializer, markdownParser } from '../../common/ThreadPostContentSerializer'
+import { openWriteReplyPreview, WriteReplyPreviewParam } from './WriteReplyPreview'
 
 export enum WriteReplyMode {
   NEW_THREAD,
@@ -132,6 +134,9 @@ export struct WriteReply {
   @State essentialDataReady: boolean = false
   @State sendingReply: boolean = false
   @State fontColorPickerShow: boolean = false
+  @State markdownImportSheetShow: boolean = false
+  @State markdownImportText: string = ''
+  @State attachmentImagePreview: Record<string, string> = {}
   popData: WriteReplyPopData = {
     replied: false
   }
@@ -223,8 +228,70 @@ export struct WriteReply {
     }
   }
 
+  importMarkdown() {
+    const input = this.markdownImportText.trim()
+    if (input.length == 0) {
+      ShowToast({
+        message: '请输入 Markdown 内容'
+      })
+      return
+    }
+    const bbcode = bbCodeSerializer.convert(markdownParser.convert(input))
+    if (bbcode.length == 0) {
+      ShowToast({
+        message: '没有可插入的内容'
+      })
+      return
+    }
+    this.insertText(bbcode)
+    this.markdownImportText = ''
+    this.markdownImportSheetShow = false
+  }
+
+  recordAttachmentImagePreview(aid: string, src: string): void {
+    if (aid.length == 0 || src.length == 0) {
+      return
+    }
+    const preview: Record<string, string> = {}
+    Object.keys(this.attachmentImagePreview).forEach((key: string): void => {
+      preview[key] = this.attachmentImagePreview[key]
+    })
+    preview[aid] = src
+    this.attachmentImagePreview = preview
+  }
+
+  collectWebAttachmentImagePreview(): Promise<Record<string, string>> {
+    if (!/\[attachimg\]/i.test(this.fieldToInput.content)) {
+      return Promise.resolve(this.attachmentImagePreview)
+    }
+    return this.writeHandler.getWebpage().then((html: string): Record<string, string> => {
+      const preview: Record<string, string> = {}
+      const pageInfo = extractReplyPageInfo(html)
+      pageInfo.usingImage.forEach((src: string, aid: string): void => {
+        preview[aid] = URL.WEB_BASE + src
+      })
+      Object.keys(this.attachmentImagePreview).forEach((aid: string): void => {
+        preview[aid] = this.attachmentImagePreview[aid]
+      })
+      return preview
+    }).catch((): Record<string, string> => {
+      return this.attachmentImagePreview
+    })
+  }
+
+  openPreview(): void {
+    this.collectWebAttachmentImagePreview().then((attachmentImagePreview: Record<string, string>): void => {
+      const param: WriteReplyPreviewParam = {
+        content: this.fieldToInput.content,
+        subject: this.fieldToInput.subject || this.pageParam.subjectToReply,
+        attachmentImagePreview
+      }
+      openWriteReplyPreview(this.pathStack, param, this.pageParam.defaultTransition)
+    })
+  }
+
   @LocalBuilder
-  toolBarButton(img: ResourceStr, index: number) {
+  toolBarButton(img: ResourceStr, index: number, onClick?: () => void) {
     Stack() {
       Image(img)
         .width(FontSizeEnum[this.appState.fontSize].vp32)
@@ -239,7 +306,11 @@ export struct WriteReply {
     .attributeModifier(new ClickDarkenEffect)
     .clickEffect(HeavyClickEffect)
     .padding({ left: 40, right: 40 })
-    .onClick(async e => {
+    .onClick(() => {
+      if (onClick) {
+        onClick()
+        return
+      }
       if (!this.showTools) {
         this.showTools = true
         this.toolPanelController.changeIndex(index, false)
@@ -523,6 +594,10 @@ export struct WriteReply {
           this.toolBarButton($r('app.media.face_smiling'), 1)
           this.toolBarButton($r('app.media.picture'), 2)
           this.toolBarButton($r('app.media.textformat_size_square'), 3)
+          Blank()
+          this.toolBarButton($r('app.media.livephoto'), -1, () => {
+            this.openPreview()
+          })
         }
         .width('100%')
         .backgroundColor(this.appTheme.backgroundTertiary)
@@ -548,6 +623,9 @@ export struct WriteReply {
                 onPicked: (text): void => this.insertText(text),
                 onRemoval: (text): void => {
                   this.fieldToInput.content = this.fieldToInput.content.replaceAll(text, '')
+                },
+                onAttachmentImageResolved: (aid: string, src: string): void => {
+                  this.recordAttachmentImagePreview(aid, src)
                 },
                 currentMode: this.pageParam.mode
               })
@@ -619,6 +697,15 @@ export struct WriteReply {
                     }, () => {
                       this.fontColorPickerShow = true
                     })
+                    this.PostFormatterButton({
+                      img: $r('app.media.markdown'),
+                      name: '导入Md',
+                      prefix: '',
+                      suffix: ''
+                    }, () => {
+                      this.markdownImportText = ''
+                      this.markdownImportSheetShow = true
+                    })
                   }
                 }.padding({ top: 20 })
                 .width('100%')
@@ -682,6 +769,52 @@ export struct WriteReply {
     }).bindSheet($$this.fontColorPickerShow, buildFontColorPicker((colorValue) => {
       this.wrapText(`[color=${colorValue}]`, '[color]')
     }), FontColorPickerSheetOption)
+    .bindSheet($$this.markdownImportSheetShow, this.MarkdownImportSheet(), {
+      height: SheetSize.MEDIUM,
+      detents: [SheetSize.MEDIUM, SheetSize.LARGE],
+      dragBar: true,
+      showClose: false,
+      preferType: SheetType.BOTTOM,
+      scrollSizeMode: ScrollSizeMode.CONTINUOUS
+    })
+  }
+
+  @Builder
+  MarkdownImportSheet() {
+    Column({ space: 12 }) {
+      Text('导入 Markdown')
+        .fontSize(FontSizeEnum[this.appState.fontSize].vp20)
+        .fontColor(this.appTheme.fontPrimary)
+        .width('100%')
+        .textAlign(TextAlign.Start)
+
+      TextArea({
+        text: $$this.markdownImportText,
+        placeholder: '粘贴 Markdown 内容，会尽量转换成BBCode'
+      })
+        .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+        .fontColor(this.appTheme.fontPrimary)
+        .borderRadius(8)
+        .padding(12)
+        .width('100%')
+        .layoutWeight(1)
+
+      Row({ space: 12 }) {
+        Button('取消', { buttonStyle: ButtonStyleMode.TEXTUAL })
+          .layoutWeight(1)
+          .onClick(() => {
+            this.markdownImportSheetShow = false
+          })
+        Button('插入', { buttonStyle: ButtonStyleMode.EMPHASIZED })
+          .layoutWeight(1)
+          .onClick(() => {
+            this.importMarkdown()
+          })
+      }.width('100%')
+    }
+    .width('100%')
+    .height('100%')
+    .padding(16)
   }
 
   @Builder
