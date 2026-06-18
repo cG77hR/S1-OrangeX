@@ -1,4 +1,4 @@
-package io.github.wly5556.s1orangeX;
+package io.github.wly5556.s1orangeXSDK26;
 
 import ohos.stage.ability.adapter.StageApplication;
 

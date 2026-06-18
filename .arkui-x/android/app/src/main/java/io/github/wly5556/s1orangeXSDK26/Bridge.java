@@ -1,6 +1,6 @@
-package io.github.wly5556.s1orangeX;
+package io.github.wly5556.s1orangeXSDK26;
 
-import static io.github.wly5556.s1orangeX.EntryEntryAbilityActivity.PICK_IMAGES_REQUEST_CODE;
+import static io.github.wly5556.s1orangeXSDK26.EntryEntryAbilityActivity.PICK_IMAGES_REQUEST_CODE;
 
 import android.app.Activity;
 import android.app.UiModeManager;

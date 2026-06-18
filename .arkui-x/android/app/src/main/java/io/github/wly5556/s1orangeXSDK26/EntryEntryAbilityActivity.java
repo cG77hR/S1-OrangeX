@@ -1,4 +1,4 @@
-package io.github.wly5556.s1orangeX;
+package io.github.wly5556.s1orangeXSDK26;
 
 import android.app.Activity;
 import android.content.ClipData;
@@ -64,7 +64,7 @@ public class EntryEntryAbilityActivity extends StageActivity {
             getBridgeInstance().callMethod("onWindowInsetsListener", statusBarHeight, navigationBarHeight, keyboardHeight);
             return insets;
         });
-        setInstanceName("io.github.wly5556.s1orangeX:entry:EntryAbility:");
+        setInstanceName("io.github.wly5556.s1orangeXSDK26:entry:EntryAbility:");
         super.onCreate(savedInstanceState);
         dispatchProcessTextActions();
         dispatchOpenS1Like(getIntent());

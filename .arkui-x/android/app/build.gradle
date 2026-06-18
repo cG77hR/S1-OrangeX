@@ -11,7 +11,7 @@ android {
     def moduleJsonFile = file("$rootDir/app/src/main/assets/arkui-x/entry/module.json")
 
     defaultConfig {
-        applicationId "io.github.wly5556.s1orangeX"
+        applicationId "io.github.wly5556.s1orangeXSDK26"
         minSdkVersion 26
         targetSdkVersion 33
         if (moduleJsonFile.exists()) {
@@ -48,7 +48,7 @@ android {
             jniLibs.srcDirs = ['libs']
         }
     }
-    namespace 'io.github.wly5556.s1orangeX'
+    namespace 'io.github.wly5556.s1orangeXSDK26'
 }
 
 dependencies {
