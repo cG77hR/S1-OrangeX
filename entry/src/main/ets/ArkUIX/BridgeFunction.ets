@@ -15,6 +15,7 @@ enum BridgeFunction {
   onUiModeChanged = "onUiModeChanged",
   moveToExternalDownload = "moveToExternalDownload",
   copyToExternalDownload = "copyToExternalDownload",
+  readTextFromUri = "readTextFromUri",
   setNightMode = "setNightMode",
   getSdkInt = "getSdkInt",
   getWindowInset = "getWindowInset",
@@ -121,6 +122,11 @@ class PlatformBridgeClass {
   async copyToExternalDownload(path: string, filename: string) {
     const impl = await this.getImpl()
     return impl.callMethod(BridgeFunction.copyToExternalDownload, path, filename)
+  }
+
+  async readTextFromUri(uri: string): Promise<string> {
+    const impl = await this.getImpl()
+    return await impl.callMethod(BridgeFunction.readTextFromUri, uri) as string
   }
 
   async setNightMode(mode: ConfigurationConstant.ColorMode) {

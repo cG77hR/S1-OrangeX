@@ -6,7 +6,8 @@ export async function queryAsset(key: string): Promise<string[] | undefined> {
   if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
     return queryAssetLocal(key)
   } else {
-    return [await queryAssetArkUIX(key)]
+    const result = await queryAssetArkUIX(key)
+    return result == undefined ? undefined : [result]
   }
 }
 

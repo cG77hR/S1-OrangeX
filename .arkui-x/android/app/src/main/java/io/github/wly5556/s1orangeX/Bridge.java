@@ -39,7 +39,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
@@ -426,6 +429,24 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
                 sourceFile.delete();
             }
         } catch (Exception ignored) {
+        }
+    }
+
+    public String readTextFromUri(String uriString) {
+        try (InputStream inputStream = context.getContentResolver().openInputStream(Uri.parse(uriString));
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            if (inputStream == null) {
+                return "";
+            }
+            byte[] buffer = new byte[8192];
+            int length;
+            while ((length = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, length);
+            }
+            return outputStream.toString(StandardCharsets.UTF_8.name());
+        } catch (Exception e) {
+            ALog.w("Bridge", "Failed to read text from uri: " + e.getMessage());
+            return "";
         }
     }
 

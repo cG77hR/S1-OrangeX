@@ -320,8 +320,14 @@ export async function selectPersonalDataBundle(context: common.UIAbilityContext)
   if (documentSelectResult.length == 0) {
     return undefined
   }
-  const selectedPath = new fileUri.FileUri(documentSelectResult[0]).path
-  const text = await fs.readText(selectedPath)
+  const selectedUri = documentSelectResult[0]
+  let text: string
+  if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+    text = await PlatformBridge.readTextFromUri(selectedUri)
+  } else {
+    const selectedPath = new fileUri.FileUri(selectedUri).path
+    text = await fs.readText(selectedPath)
+  }
   return parsePersonalDataBundle(text)
 }
 

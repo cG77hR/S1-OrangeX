@@ -58,7 +58,7 @@ export async function createOrUpdateAssetArkUIX(key: string, value: string) {
   assetDb?.commit();
 }
 
-export async function queryAssetArkUIX(key: string): Promise<string> {
+export async function queryAssetArkUIX(key: string): Promise<string | undefined> {
   await dbInitPromise;
 
   const predicates = new relationalStore.RdbPredicates(TABLE_NAME)
@@ -66,7 +66,8 @@ export async function queryAssetArkUIX(key: string): Promise<string> {
 
   const result = await assetDb!.query(predicates, [COLUMN.value]);
   if (result.rowCount === 0) {
-    return Promise.reject();
+    result.close();
+    return undefined;
   }
 
   result.goToFirstRow();
