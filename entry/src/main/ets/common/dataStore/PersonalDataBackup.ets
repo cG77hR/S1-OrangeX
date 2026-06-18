@@ -13,6 +13,8 @@ import { ApplicationConfig } from '../../config/v1/default'
 import { DraftItem, ExportDraft, RestoreDraft } from './DraftData'
 import { ExportViewHistory, RestoreViewHistory, ViewHistoryItem } from './HistoryData'
 import { BlockKeywordInfo, ExportBlockKeyword, RestoreBlockKeyword } from './BlockKeyword'
+import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
+import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
 
 const PERSONAL_DATA_FORMAT = 's1-orange-personal-data'
 const PERSONAL_DATA_FORMAT_VERSION = 1
@@ -214,7 +216,7 @@ function exportFileName(exportedAt: number): string {
 }
 
 async function writeTextFile(uri: string, text: string) {
-  const file = await fs.open(uri, fs.OpenMode.READ_WRITE | fs.OpenMode.TRUNC)
+  const file = await fs.open(uri, fs.OpenMode.READ_WRITE | fs.OpenMode.TRUNC | fs.OpenMode.CREATE)
   try {
     await fs.write(file.fd, text)
   } finally {
@@ -280,6 +282,15 @@ export async function exportPersonalData(context: common.UIAbilityContext): Prom
   const filename = exportFileName(exportedAt)
   const bundle = await createPersonalDataBundle(exportedAt)
   const text = JSON.stringify(bundle)
+  if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+    const sandboxPath = context.cacheDir + '/' + filename
+    if (await fs.access(sandboxPath)) {
+      await fs.unlink(sandboxPath)
+    }
+    await writeTextFile(sandboxPath, text)
+    await PlatformBridge.moveToExternalDownload(sandboxPath, filename)
+    return `存储/Download/${filename}`
+  }
   const documentViewPicker = new picker.DocumentViewPicker(context)
   const documentSaveOptions = new picker.DocumentSaveOptions()
   documentSaveOptions.newFileNames = [filename]
