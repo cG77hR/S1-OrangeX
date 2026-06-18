@@ -92,6 +92,10 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
     }
 
     public void openAppOpenByDefaultSettings() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            showToast("您的Android版本低于12，无需专门设置即可跳转");
+            return;
+        }
         try {
             Intent intent = new Intent(Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS);
             intent.setData(Uri.parse("package:" + context.getPackageName()));
