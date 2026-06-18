@@ -1,4 +1,4 @@
-﻿import { DomainRegex, URL } from '../../api/base'
+import { DomainRegex, URL } from '../../api/base'
 import request, { RequestError } from '../../api/request'
 import { Attachment, PostListV4, SpecialPollAllowVote, SpecialPollResultVisible } from '../../api/model/postList'
 import wrapper, { wrapperApp } from '../../api/wrapper'
@@ -304,24 +304,6 @@ export struct ThreadPostList {
                 this.reloadCtrl.reload()
               }
             }, {
-              value: '搜索本页',
-              action: () => {
-                const items = this.searchItemsByPage.get(this.currentPage)
-                if (!items || items.length == 0) {
-                  ShowToast({ message: '本页内容尚未加载完成' })
-                  return
-                }
-                const param: PageSearchParam = {
-                  tid: this.pageParam.tid,
-                  fid: this.pageParam.fid,
-                  subject: this.pageParam.subject,
-                  replies: this.pageParam.replies,
-                  page: this.currentPage,
-                  posts: items
-                }
-                openPageSearch(this.pathStack, param)
-              }
-            }, {
               value: '收藏',
               action: () => {
                 new request<wrapper<Account>>(URL.FAV_ADD)
@@ -345,7 +327,7 @@ export struct ThreadPostList {
                 })
               }
             }, {
-              value: '分享',
+              value: '分享链接',
               action: () => {
                 ShareText(this.pageParam.subject + ' ' + generateS1WebPostLink(this.pageParam.tid, this.currentPage),
                   this.context)
@@ -364,6 +346,24 @@ export struct ThreadPostList {
               value: '从浏览器打开',
               action: () => {
                 openInBrowser(this.context, this.getUrlForPage())
+              }
+            }, {
+              value: '搜索本页',
+              action: () => {
+                const items = this.searchItemsByPage.get(this.currentPage)
+                if (!items || items.length == 0) {
+                  ShowToast({ message: '本页内容尚未加载完成' })
+                  return
+                }
+                const param: PageSearchParam = {
+                  tid: this.pageParam.tid,
+                  fid: this.pageParam.fid,
+                  subject: this.pageParam.subject,
+                  replies: this.pageParam.replies,
+                  page: this.currentPage,
+                  posts: items
+                }
+                openPageSearch(this.pathStack, param)
               }
             }]
           }) {

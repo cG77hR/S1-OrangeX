@@ -12,7 +12,7 @@ import { extractReplyPageInfo, ReplyImagePicker } from '../../common/component/R
 import wrapper from '../../api/wrapper'
 import Account from '../../api/model/account'
 import { unescapeXml } from '../../common/XmlParser'
-import { buildFontColorPicker, FontColorPickerSheetOption } from '../../common/component/FontColorPicker'
+import { buildFontColorPicker } from '../../common/component/FontColorPicker'
 import {
   DraftDbSetUser,
   DraftItem,
@@ -38,6 +38,12 @@ export enum WriteReplyMode {
   NEW_POST,
   NEW_POST_QUOTE,
   NEW_PM,
+}
+
+enum WriteReplySheetMode {
+  NONE,
+  FONT_COLOR,
+  MARKDOWN_IMPORT
 }
 
 export const WriteReplyPageTitle: string[] = []
@@ -133,8 +139,8 @@ export struct WriteReply {
   @State quote?: Quote = undefined
   @State essentialDataReady: boolean = false
   @State sendingReply: boolean = false
-  @State fontColorPickerShow: boolean = false
-  @State markdownImportSheetShow: boolean = false
+  @State sheetShow: boolean = false
+  @State sheetMode: WriteReplySheetMode = WriteReplySheetMode.NONE
   @State markdownImportText: string = ''
   @State attachmentImagePreview: Record<string, string> = {}
   popData: WriteReplyPopData = {
@@ -245,7 +251,7 @@ export struct WriteReply {
     }
     this.insertText(bbcode)
     this.markdownImportText = ''
-    this.markdownImportSheetShow = false
+    this.sheetShow = false
   }
 
   recordAttachmentImagePreview(aid: string, src: string): void {
@@ -695,7 +701,8 @@ export struct WriteReply {
                       prefix: '',
                       suffix: ''
                     }, () => {
-                      this.fontColorPickerShow = true
+                      this.sheetMode = WriteReplySheetMode.FONT_COLOR
+                      this.sheetShow = true
                     })
                     this.PostFormatterButton({
                       img: $r('app.media.markdown'),
@@ -704,7 +711,8 @@ export struct WriteReply {
                       suffix: ''
                     }, () => {
                       this.markdownImportText = ''
-                      this.markdownImportSheetShow = true
+                      this.sheetMode = WriteReplySheetMode.MARKDOWN_IMPORT
+                      this.sheetShow = true
                     })
                   }
                 }.padding({ top: 20 })
@@ -766,17 +774,28 @@ export struct WriteReply {
     }).onBackPressed(() => {
       this.popBack()
       return true
-    }).bindSheet($$this.fontColorPickerShow, buildFontColorPicker((colorValue) => {
-      this.wrapText(`[color=${colorValue}]`, '[color]')
-    }), FontColorPickerSheetOption)
-    .bindSheet($$this.markdownImportSheetShow, this.MarkdownImportSheet(), {
+    }).bindSheet($$this.sheetShow, this.SheetContent(), {
       height: SheetSize.MEDIUM,
       detents: [SheetSize.MEDIUM, SheetSize.LARGE],
       dragBar: true,
       showClose: false,
       preferType: SheetType.BOTTOM,
-      scrollSizeMode: ScrollSizeMode.CONTINUOUS
+      scrollSizeMode: ScrollSizeMode.CONTINUOUS,
+      onDisappear: () => {
+        this.sheetMode = WriteReplySheetMode.NONE
+      }
     })
+  }
+
+  @Builder
+  SheetContent() {
+    if (this.sheetMode === WriteReplySheetMode.FONT_COLOR) {
+      buildFontColorPicker((colorValue) => {
+        this.wrapText(`[color=${colorValue}]`, '[color]')
+      })
+    } else if (this.sheetMode === WriteReplySheetMode.MARKDOWN_IMPORT) {
+      this.MarkdownImportSheet()
+    }
   }
 
   @Builder
@@ -803,7 +822,7 @@ export struct WriteReply {
         Button('取消', { buttonStyle: ButtonStyleMode.TEXTUAL })
           .layoutWeight(1)
           .onClick(() => {
-            this.markdownImportSheetShow = false
+            this.sheetShow = false
           })
         Button('插入', { buttonStyle: ButtonStyleMode.EMPHASIZED })
           .layoutWeight(1)
