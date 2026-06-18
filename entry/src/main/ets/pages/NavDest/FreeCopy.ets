@@ -146,28 +146,43 @@ export struct FreeCopy {
 
   customMenuItems(): TextMenuItem[] {
     const menuItems: TextMenuItem[] = []
-    if (this.selectedUrl.length > 0) {
+    if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+      return menuItems
+    } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+      if (this.selectedUrl.length > 0) {
+        menuItems.push({
+          content: '浏览器打开',
+          id: TextMenuItemId.of(OpenInBrowserMenuId)
+        } as TextMenuItem)
+      }
       menuItems.push({
-        content: '浏览器打开',
-        id: TextMenuItemId.of(OpenInBrowserMenuId)
+        content: '分享',
+        icon: $r('app.media.share'),
+        id: TextMenuItemId.of(ShareSelectedTextMenuId)
       } as TextMenuItem)
     }
-    menuItems.push({
-      content: '分享',
-      icon: $r('app.media.share'),
-      id: TextMenuItemId.of(ShareSelectedTextMenuId)
-    } as TextMenuItem)
-    this.processTextActions.forEach(action => {
-      menuItems.push({
-        content: action.label,
-        id: TextMenuItemId.of(processTextMenuId(action.id))
-      } as TextMenuItem)
-    })
+    return menuItems
+  }
+
+  processTextMenuItems(): TextMenuItem[] {
+    const menuItems: TextMenuItem[] = []
+    if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+      return menuItems
+    } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+      this.processTextActions.forEach(action => {
+        menuItems.push({
+          content: action.label,
+          id: TextMenuItemId.of(processTextMenuId(action.id))
+        } as TextMenuItem)
+      })
+    }
     return menuItems
   }
 
   prepareMenuItems(menuItems: TextMenuItem[]): TextMenuItem[] {
-    return this.customMenuItems().concat(menuItems.filter(item => !this.isCustomMenuItem(item)))
+    return menuItems.filter(item => !this.isCustomMenuItem(item))
+      .concat(this.customMenuItems())
+      .concat(this.processTextMenuItems())
   }
 
   popBack() {
@@ -175,7 +190,9 @@ export struct FreeCopy {
   }
 
   aboutToAppear() {
-    if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+    if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+      return
+    } else if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
       this.processTextActions = getCachedProcessTextActions()
       refreshProcessTextActions().then(actions => {
         this.processTextActions = actions
