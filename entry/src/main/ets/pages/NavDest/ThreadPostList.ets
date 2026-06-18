@@ -54,6 +54,7 @@ import { BLOCK_USER_LIST_STATE, BlockUser, UnblockUser } from '../../common/data
 import { ThreadDataApp } from '../../api/model/app/thread'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { HiddenPostDisplay } from '../../config/v1/default'
+import { PreferenceManager } from '../../config/UserConfig'
 import { LengthUnit } from '@kit.ArkUI'
 import { PropKey, SafeArea } from '../../common/Constants'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
@@ -104,6 +105,13 @@ export interface ThreadPostParam {
   jumpToPidWithHighlight?: boolean
 }
 
+interface LongScreenshotOptionButtonParam {
+  label: string
+  checkboxName: string
+  selected: boolean
+  onToggle: (checked: boolean) => void
+}
+
 const PostContentVerticalPadding = 12
 const PostContentHorizontalPadding = 16
 const POST_PER_PAGE = 40
@@ -143,6 +151,7 @@ export struct ThreadPostList {
   @Provide pollForShot?: LongScreenshotPollForShot = undefined
   mainPostReturnPage: number = -1
   @State selectedCount: number = 0
+  @State expandRatingForLongScreenshot: boolean = false
   @Provide contentVisible: boolean = true
   @StorageProp(SafeArea.bottom) bottomRectHeight: number = 0
   reloadCtrl: ReloadController = new ReloadController()
@@ -187,8 +196,16 @@ export struct ThreadPostList {
     if (!this.longScreenshotMode || this.mainPostReturnPage < 0) {
       return
     }
+    if (this.mainPostForShot === undefined) {
+      return
+    }
+    if (this.isMainPostSelected()) {
+      return
+    }
     const pageToReturn = this.mainPostReturnPage
-    this.trySelectMainPostForShot()
+    const newMap = new Map(this.selectedPostsForShot)
+    newMap.set(this.mainPostKey(), this.mainPostForShot)
+    this.selectedPostsForShot = newMap
     this.mainPostReturnPage = -1
     this.jumpToPage = pageToReturn
   }
@@ -199,36 +216,6 @@ export struct ThreadPostList {
 
   private isMainPostSelected(): boolean {
     return this.selectedPostsForShot.has(this.mainPostKey())
-  }
-
-  private trySelectMainPostForShot(): void {
-    if (this.mainPostForShot === undefined) {
-      return
-    }
-    if (this.isMainPostSelected()) {
-      return
-    }
-    const newMap = new Map(this.selectedPostsForShot)
-    newMap.set(this.mainPostKey(), this.mainPostForShot)
-    this.selectedPostsForShot = newMap
-  }
-
-  private toggleMainPostSelect(checked: boolean): void {
-    const newMap = new Map(this.selectedPostsForShot)
-    if (checked) {
-      if (this.mainPostForShot !== undefined) {
-        newMap.set(this.mainPostKey(), this.mainPostForShot)
-      } else {
-        ShowToast({
-          message: '正在选中主楼，请等待自动返回'
-        })
-        this.mainPostReturnPage = this.currentPage
-        this.jumpToPage = 1
-      }
-    } else {
-      newMap.delete(this.mainPostKey())
-    }
-    this.selectedPostsForShot = newMap
   }
 
   async generateLongScreenshot() {
@@ -248,13 +235,40 @@ export struct ThreadPostList {
       fid: this.pageParam.fid,
       typeid: this.pageParam.typeid,
       posts,
-      ratingInfoMap
+      ratingInfoMap,
+      expandRating: this.expandRatingForLongScreenshot
     }
     if (this.pollForShot !== undefined) {
       param.poll = this.pollForShot
     }
     openLongScreenshot(this.pathStack, param)
     this.exitLongScreenshotMode()
+  }
+
+  @Builder
+  longScreenshotOptionButton(param: LongScreenshotOptionButtonParam) {
+    Row({ space: 8 }) {
+      Text(param.label)
+        .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
+        .fontWeight(FontWeight.Medium)
+      Checkbox({ name: param.checkboxName })
+        .select(param.selected)
+        .selectedColor(this.appTheme.fontEmphasize)
+        .width(20)
+        .height(20)
+        .borderRadius(10)
+        .hitTestBehavior(HitTestMode.None)
+    }
+    .height(40)
+    .padding({ left: 14, right: 10 })
+    .borderRadius(20)
+    .backgroundColor(this.appTheme.backgroundTertiary)
+    .opacity(param.selected ? 1 : 0.8)
+    .clickEffect(HeavyClickEffect)
+    .shadow(ShadowStyle.OUTER_DEFAULT_SM)
+    .onClick(() => {
+      param.onToggle(!param.selected)
+    })
   }
 
   @Builder
@@ -340,7 +354,6 @@ export struct ThreadPostList {
               value: '长截图',
               action: () => {
                 this.longScreenshotMode = true
-                this.trySelectMainPostForShot()
               }
             }, {
               value: '复制链接',
@@ -376,25 +389,46 @@ export struct ThreadPostList {
 
         if (this.longScreenshotMode) {
           Column({ space: 8 }) {
-            Row({ space: 6 }) {
-              Text('主楼')
-                .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
-                .fontWeight(FontWeight.Medium)
-              Checkbox({ name: 'longScreenshotMainPost' })
-                .select(this.isMainPostSelected())
-                .selectedColor(this.appTheme.fontEmphasize)
-                .width(20)
-                .height(20)
-                .borderRadius(10)
-                .onChange((checked: boolean) => {
-                  this.toggleMainPostSelect(checked)
-                })
+            Row() {
+              this.longScreenshotOptionButton({
+                label: '展开评分',
+                checkboxName: 'longScreenshotExpandRating',
+                selected: this.expandRatingForLongScreenshot,
+                onToggle: (checked: boolean) => {
+                  this.expandRatingForLongScreenshot = checked
+                  PreferenceManager.modify(conf => {
+                    conf.long_screenshot_expand_rating = checked
+                  })
+                }
+              })
+
+              Blank()
+
+              this.longScreenshotOptionButton({
+                label: '主楼',
+                checkboxName: 'longScreenshotMainPost',
+                selected: this.isMainPostSelected(),
+                onToggle: (checked: boolean) => {
+                  const newMap = new Map(this.selectedPostsForShot)
+                  if (checked) {
+                    if (this.mainPostForShot !== undefined) {
+                      newMap.set(this.mainPostKey(), this.mainPostForShot)
+                    } else {
+                      ShowToast({
+                        message: '正在选中主楼，请等待自动返回'
+                      })
+                      this.mainPostReturnPage = this.currentPage
+                      this.jumpToPage = 1
+                    }
+                  } else {
+                    newMap.delete(this.mainPostKey())
+                  }
+                  this.selectedPostsForShot = newMap
+                }
+              })
             }
-            .height(36)
-            .padding({ left: 14, right: 10 })
-            .borderRadius(18)
-            .backgroundColor(this.appTheme.backgroundTertiary)
-            .shadow(ShadowStyle.OUTER_DEFAULT_SM)
+            .width('100%')
+            .alignItems(VerticalAlign.Center)
 
             Row({ space: 8 }) {
               Text(`已选 ${this.selectedCount} 楼`)
@@ -414,8 +448,10 @@ export struct ThreadPostList {
             .opacity(this.selectedCount > 0 ? 1 : 0.5)
             .onClick(() => this.generateLongScreenshot())
           }
+          .width('100%')
+          .padding({ left: 30, right: 30 })
           .alignItems(HorizontalAlign.End)
-          .position({ bottom: 40, right: 30 })
+          .position({ bottom: 40 })
         } else if (this.allowPullDownRefresh || this.replyButtonExpand) {
           Stack() {
             Image($r('app.media.ellipsis_message_fill')).width(30).height(30)
@@ -473,6 +509,9 @@ export struct ThreadPostList {
     .hideTitleBar(true)
     .onReady(async (context: NavDestinationContext) => {
       this.pathStack = context.pathStack
+      await PreferenceManager.readonly(conf => {
+        this.expandRatingForLongScreenshot = conf.long_screenshot_expand_rating
+      })
       const pageParam = context.pathInfo.param as ThreadPostParam
       if (pageParam.jumpToPage == undefined && pageParam.jumpToPid == undefined && pageParam.authorid == undefined) {
         const history = await QuerySingleViewHistory(pageParam.tid)
@@ -554,7 +593,7 @@ export struct ThreadPostList {
 }
 
 const BOTTOM_LOADING_AREA = 80
-const LONG_SCREENSHOT_PICKER_BOTTOM_SPACER = 132
+const LONG_SCREENSHOT_PICKER_BOTTOM_SPACER = 148
 const PULL_UP_LOADING_INTERVAL = 500 // ms
 
 interface floorParam {
