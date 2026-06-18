@@ -55,8 +55,8 @@ export enum URL {
   REPORT_POST = 'misc.php?mod=report&inajax=1'
 }
 
-export const APP_RELEASE_INFO = 'https://raw.giteeusercontent.com/rI6tL9/S1-Orange/raw/main/latest_version'
+export const APP_RELEASE_INFO = 'https://raw.giteeusercontent.com/rI6tL9/S1-OrangeX/raw/main/latest_version'
 export const GITHUB_RELEASE_PAGE = 'https://github.com/wly5556/S1-Orange/releases'
-export const GITHUB_RELEASE_PAGE_ANDROID = 'https://github.com/cG77hR/S1-OrangeX/releases/'
+export const GITHUB_RELEASE_PAGE_ANDROID = 'https://gitee.com/rI6tL9/S1-OrangeX/releases/'
 
 export const DomainRegex = new RegExp(`^https:\/\/(?:[^\/]*\.)?${URL.DOMAIN.replaceAll('.','\.')}(?:\/.*)?$`)
