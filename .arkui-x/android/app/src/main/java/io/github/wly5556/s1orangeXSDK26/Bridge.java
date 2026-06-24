@@ -85,6 +85,8 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.addCategory(Intent.CATEGORY_BROWSABLE);
             Intent chooserIntent = Intent.createChooser(intent, "打开方式");
+            ComponentName excludedComponent = new ComponentName(context, EntryEntryAbilityActivity.class);
+            chooserIntent.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, new ComponentName[]{excludedComponent});
             context.startActivity(chooserIntent);
         } catch (Exception e) {
             ALog.w("Failed to open URL: ", e.getMessage());
