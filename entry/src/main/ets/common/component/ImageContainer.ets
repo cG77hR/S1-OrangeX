@@ -6,6 +6,7 @@ import { common } from '@kit.AbilityKit'
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage'
 import { FontSizeEnum } from '../fontSize/FontSizeEnum'
 import { ImageViewerTransitionToSize } from './ImageViewer'
+import { IRcpSession, Rcp } from '../../ArkUIX/Rcp/Rcp'
 
 export interface RectSize {
   w: number,
@@ -13,6 +14,7 @@ export interface RectSize {
 }
 
 const MAX_RETRY = 2
+const NO_PROXY_FROM_RETRY = 2
 
 @Component
 export struct ImageContainer {
@@ -21,6 +23,7 @@ export struct ImageContainer {
   @State loadComplete: boolean = false
   @State loadingProgress: number = 0
   @State loadFailed: boolean = false
+  @State retryHint: string = ''
   @State downsampleStrategy: DownsampleStrategy = DownsampleStrategy.DEFAULT
   imgSize?: RectSize
   retry: number = 0
@@ -83,6 +86,11 @@ export struct ImageContainer {
             Image($r('app.media.face_253_akarin'))
               .width(FontSizeEnum[this.appState.fontSize].vp40)
               .height(FontSizeEnum[this.appState.fontSize].vp40)
+          } else if (this.retryHint) {
+            Text(this.retryHint)
+              .opacity(.4)
+              .fontSize(FontSizeEnum[this.appState.fontSize].vp12)
+              .textAlign(TextAlign.Center)
           }
         }
         .onClick(e => {
@@ -111,14 +119,19 @@ export struct ImageContainer {
               value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
             }],
             loadSrc: encodeURI(this.imageUrl),
+            customGetImage: this.retry >= NO_PROXY_FROM_RETRY ? customGetImageNoProxy : undefined,
             objectFit: ImageFit.Contain,
             onLoadListener: {
               onLoadFailed: (err: string, request?: ImageKnifeRequest) => {
                 if (this.retry >= MAX_RETRY) {
                   this.loadFailed = true
+                  this.retryHint = ''
                   this.onFailed()
                 } else {
-                  this.retry += 1
+                   this.retry += 1
+                  this.retryHint = this.retry >= NO_PROXY_FROM_RETRY
+                    ? '网络异常\n\n重试2次'
+                    : '网络异常\n\n重试1次'
                   this.imageUrl = ''
                   setTimeout(() => {
                     this.imageUrl = this.src
@@ -131,6 +144,7 @@ export struct ImageContainer {
               // 给ImageKnifeComponent用auto height在显示动图的时候，会按height 100%来处理，而不是自适应图片高度
               // 暂时二次设置图片高度
               this.loadComplete = true
+              this.retryHint = ''
               if (imageSize) {
                 this.imgSize = {
                   w: imageSize.width,
@@ -174,4 +188,47 @@ export function resizeImgFitWidth(imageSize: RectSize, width: number) {
     h: imageSize.h * width / imageSize.w
   }
   return result
+}
+
+@Concurrent
+async function customGetImageNoProxy(context: Context, src: string | PixelMap | Resource,
+  headers?: Record<string, Object>): Promise<ArrayBuffer | undefined> {
+  if (typeof src !== 'string') {
+    return undefined
+  }
+  const headerRecord: Record<string, string> = {}
+  if (headers) {
+    const keys = Object.keys(headers)
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i]
+      headerRecord[k] = `${headers[k]}`
+    }
+  }
+  let session: IRcpSession | undefined
+  try {
+    session = await Rcp.createSession({
+      headers: headerRecord,
+      requestConfiguration: {
+        proxy: 'no-proxy',
+        transfer: {
+          autoRedirect: true
+        }
+      }
+    })
+    const response = await session.get(src)
+    if (response.statusCode === 200 || response.statusCode === 206) {
+      const body = response.body
+      if (body && typeof body !== 'string') {
+        return body
+      }
+      throw new Error('customGetImageNoProxy: invalid body')
+    }
+    throw new Error('rcp code:' + response.statusCode)
+  } catch (e) {
+    throw new Error('error rcp src:' + src + ',err:' + JSON.stringify(e))
+  } finally {
+    if (session) {
+      Rcp.closeSession(session)
+    }
+  }
 }

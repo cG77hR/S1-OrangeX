@@ -50,6 +50,7 @@ class RcpSessionHttpAdapter implements IRcpSession {
           extraData: payload,
           connectTimeout: this.config?.requestConfiguration?.transfer?.timeout?.connectMs,
           header: this.config.headers,
+          usingProxy: this.config?.requestConfiguration?.proxy !== 'no-proxy',
         },
         (err: BusinessError, data: http.HttpResponse) => {
           if (err) {
