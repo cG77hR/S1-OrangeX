@@ -32,27 +32,20 @@ export struct AboutApp {
   @State pageParam: AboutAppParam = {}
   @Consume appState: PreferenceState
   @State settingRow: SettingRow = new SettingRow(FontSizeEnum[this.appState.fontSize])
-  @State latestVersion: string = ''
-  @State latestReleaseDate: string = ''
-  @State latestVersionLoaded: boolean = false
+  latestVersion: string = ''
+  latestReleaseDate: string = ''
+  @State versionLoadCode: number = -1
 
   async aboutToAppear() {
-    await PreferenceManager.readonly(conf => {
-      const cachedInfo = parseLatestVersionInfo(conf.update_latest_version_info)
-      if (cachedInfo !== null) {
-        this.latestVersion = cachedInfo.version
-        this.latestReleaseDate = cachedInfo.releaseDate
-        this.latestVersionLoaded = true
+    fetchLatestVersionInfo().then(latestInfo => {
+      if (latestInfo !== null) {
+        this.latestVersion = latestInfo.version
+        this.latestReleaseDate = latestInfo.releaseDate
+        this.versionLoadCode = 0
+      } else {
+        this.versionLoadCode = 1
       }
     })
-    const latestInfo = await fetchLatestVersionInfo()
-    if (latestInfo !== null) {
-      this.latestVersion = latestInfo.version
-      this.latestReleaseDate = latestInfo.releaseDate
-      this.latestVersionLoaded = true
-    } else if (this.latestVersion.length === 0) {
-      this.latestVersionLoaded = true
-    }
   }
 
   @LocalBuilder
@@ -134,18 +127,21 @@ export struct AboutApp {
               Row({ space: 12 }) {
                 this.TextPrimary('最新版本')
                 Blank()
-                if (this.latestVersion.length > 0) {
+                if (this.versionLoadCode === -1) {
+                  this.TextSecondary('正在获取...')
+                } else if (this.versionLoadCode === 0) {
                   Column({ space: 4 }) {
                     this.TextPrimary(this.latestVersion)
                     this.TextSecondary(this.latestReleaseDate)
                   }
                   .alignItems(HorizontalAlign.End)
                   .flexShrink(1)
-                } else {
-                  this.TextSecondary(this.latestVersionLoaded ? '获取失败' : '正在获取...')
+                } else if (this.versionLoadCode === 1) {
+                  this.TextSecondary('获取失败')
                 }
                 this.ShareIcon()
-              }.alignItems(VerticalAlign.Center)
+              }
+              .alignItems(VerticalAlign.Center)
               .justifyContent(FlexAlign.SpaceBetween)
               .attributeModifier(this.settingRow)
               .transition(OpacityTransition)
@@ -159,6 +155,7 @@ export struct AboutApp {
                   Row() {
                     this.TextPrimary('检查应用更新')
                   }
+
                   UpdateCheckPref()
                   Text(UpdateCheckIntervalDesc[this.appState.updateCheckInterval])
                     .fontColor($r('sys.color.font_secondary'))
