@@ -59,7 +59,7 @@ import { LengthUnit } from '@kit.ArkUI'
 import { PropKey, SafeArea } from '../../common/Constants'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { openReportPost } from './ReportPost'
-import { plainTextSerializer } from '../../common/ThreadPostContentSerializer'
+import { plainTextSerializer, tryParseMarkdown } from '../../common/ThreadPostContentSerializer'
 import { openPageSearch, PageSearchParam, PostSearchItem } from './ThreadPostSearch'
 import { UserTagDialog } from '../../common/component/UserTagDialog'
 import { getUserTagsCopy } from '../../common/dataStore/UserTag'
@@ -599,6 +599,7 @@ const PULL_UP_LOADING_INTERVAL = 500 // ms
 interface floorParam {
   menu: MenuElement[]
   floorNumber: string
+  pid: string
 }
 
 const PinnedPostFloorIndex = -1
@@ -639,6 +640,8 @@ struct SinglePostPage {
   postStringify: Map<string, string> = new Map
   @State postHidden: Map<string, UIRootNode[]> = new Map
   @State postHiddenExpand: Set<string> = new Set
+  @State mdRenderShow: Map<string, boolean> = new Map
+  mdRendered: Map<string, UIRootNode[]> = new Map
   @Consume(PropKey.pathStack) pathStack: NavPathStack
   scroller: Scroller = new Scroller()
   @Consume refreshStage: PullToRefreshStage
@@ -863,6 +866,8 @@ struct SinglePostPage {
     let rawPostList = v.data.list
     this.imgUrl = []
     this.postStringify.clear()
+    this.mdRendered.clear()
+    this.mdRenderShow.clear()
     parseXML(rawPostList).forEach((root, index) => {
       const post = PostContentParser(root, this.imgUrl)
       const vm: PostViewModel = {
@@ -874,6 +879,11 @@ struct SinglePostPage {
         userCredit: rawPostList[index].e
       }
       this.postStringify.set(vm.pid, JSON.stringify(post.node))
+      const mdNode = tryParseMarkdown(post.node)
+      if (mdNode) {
+        this.mdRendered.set(vm.pid, mdNode)
+        this.mdRenderShow.set(vm.pid, true)
+      }
       postArray.push(vm)
     })
 
@@ -1026,21 +1036,43 @@ struct SinglePostPage {
 
   @Builder
   buildFloorNumber(param: floorParam) {
-    Text() {
-      Span('#')
-      Span(param.floorNumber).fontSize(FontSizeEnum[this.appState.fontSize].vp18).fontWeight(FontWeight.Medium)
+    Row() {
+      if (this.mdRendered.has(param.pid)) {
+        Stack() {
+          Image($r('app.media.markdown'))
+            .width(24)
+            .height(24)
+            .fillColor((this.mdRenderShow.get(param.pid) ?? true) ?
+              this.appTheme.fontEmphasize : this.appTheme.fontSecondary)
+        }
+        .backgroundColor(this.mdRenderShow.get(param.pid) ? this.appTheme.backgroundTertiary : undefined)
+        .borderRadius(18)
+        .padding({
+          bottom: 4
+        })
+        .width(36)
+        .height(36)
+        .margin({ right: 6 })
+        .clickEffect(HeavyClickEffect)
+        .onClick(() => {
+          this.mdRenderShow.set(param.pid, !(this.mdRenderShow.get(param.pid) ?? true))
+        })
+      }
+      Text() {
+        Span('#')
+        Span(param.floorNumber)
+          .fontSize(FontSizeEnum[this.appState.fontSize].vp18)
+          .fontWeight(FontWeight.Medium)
+      }
+      .fontColor(this.appTheme.fontEmphasize)
+      .fontFeature('"ss01" on')
+      .opacity(0.7)
+      .fontWeight(FontWeight.Normal)
+      .constraintSize({ minWidth: 35 })
+      .textAlign(TextAlign.End)
+      .clickEffect(HeavyClickEffect)
+      .bindMenu(param.menu)
     }
-    .fontColor(this.appTheme.fontEmphasize)
-    .fontFeature('"ss01" on')
-    .padding({ right: 8 })
-    .opacity(0.7)
-    .fontWeight(FontWeight.Normal)
-    .constraintSize({
-      minWidth: 35
-    })
-    .textAlign(TextAlign.End)
-    .clickEffect(HeavyClickEffect)
-    .bindMenu(param.menu)
   }
 
   getFloorNumber(compIndex: number) {
@@ -1150,6 +1182,7 @@ struct SinglePostPage {
           Text('[已被屏蔽]').opacity(.7)
           Blank()
           this.buildFloorNumber({
+            pid: post.pid,
             floorNumber: this.getFloorNumber(compIndex),
             menu: [{
               value: '解除屏蔽',
@@ -1226,6 +1259,7 @@ struct SinglePostPage {
                 })
             } else {
               this.buildFloorNumber({
+                pid: post.pid,
                 floorNumber: this.getFloorNumber(compIndex),
                 menu: [{
                   value: '回复',
@@ -1326,7 +1360,11 @@ struct SinglePostPage {
         if (!this.postHidden.has(post.pid) ||
           this.appState.hiddenPostDisplay == HiddenPostDisplay.visibleWithoutHiddenReason) {
           if (post.node.length > 0) {
-            this.buildPostContent(post.node, post.pid)
+            if (this.mdRenderShow.get(post.pid)) {
+              this.buildPostContent(this.mdRendered.get(post.pid) ?? post.node, post.pid)
+            } else {
+              this.buildPostContent(post.node, post.pid)
+            }
           } else if (this.postHidden.has(post.pid)) {
             this.buildPostContent(this.postHidden.get(post.pid) || [], post.pid)
           }

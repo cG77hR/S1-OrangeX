@@ -1,6 +1,5 @@
 import { URL } from "../../api/base"
 import request from "../../api/request"
-import promptAction from "@ohos.promptAction"
 import { AniSpeed, AppearDisappearAni } from "../../common/Animation"
 import { openOrJumpTo } from "../SingletonPage"
 import { PageNameEnum } from "../PageNameEnum"
@@ -10,6 +9,7 @@ import { AppThemeColor } from "../../common/theme/basic/basic"
 import { PreferenceState } from "../NavProvider/NavigationPage"
 import { FontSizeEnum } from "../../common/fontSize/FontSizeEnum"
 import { generateS1WebPostLink } from "../../ArkUIX/Utils/WantUitl"
+import { ShowToast } from "../../ArkUIX/Utils/ShowToast"
 
 export interface ReportPostParam {
   rid: string
@@ -118,12 +118,12 @@ export struct ReportPost {
                       'rtype': 'post'
                     })
                     .then(() => {
-                      promptAction.showToast({
+                      ShowToast({
                         message: '已举报'
                       })
                     })
                     .catch(() => {
-                      promptAction.showToast({
+                      ShowToast({
                         message: '举报时出现异常情况'
                       })
                     })
@@ -153,7 +153,7 @@ export struct ReportPost {
         this.reasons = this.reasons.concat(this.formData.reasons)
         this.ready = true
       } catch (e) {
-        promptAction.showToast({
+        ShowToast({
           message: '获取举报表单失败'
         })
         this.pathStack.pop()
