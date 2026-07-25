@@ -525,7 +525,9 @@ export struct ThreadPostList {
       if (this.pageParam.jumpToPid && this.pageParam.jumpToPid != '0') {
         this.jumpToPost = this.pageParam.jumpToPid
         this.contentVisible = false
-        setTimeout(() => this.contentVisible = true, 1000) // 跳转完成前先隐藏帖文内容，减少闪烁，若实际未能跳到该帖子需要解除隐藏
+        setTimeout(() => {
+          this.contentVisible = true
+        }, 1000) // 跳转完成前先隐藏帖文内容，减少闪烁
       }
       this.context.eventHub.on(openImgViewerEventName(this.pageParam),
         (imgUrl: string[], index: number) => {
@@ -863,6 +865,7 @@ struct SinglePostPage {
       this.pageParam.replies = String(v.data.totalCount)
     }
     let postArray: PostViewModel[] = []
+    const searchItems: PostSearchItem[] = []
     let rawPostList = v.data.list
     this.imgUrl = []
     this.postStringify.clear()
@@ -878,8 +881,18 @@ struct SinglePostPage {
         timestamp: new Date(rawPostList[index].dateline * 1000),
         userCredit: rawPostList[index].e
       }
-      this.postStringify.set(vm.pid, JSON.stringify(post.node))
-      const mdNode = tryParseMarkdown(post.node)
+      this.postStringify.set(vm.pid, JSON.stringify(vm.node)) // 完整数据作为foreach key，刷新页面数据时没变动的楼层就不会闪烁
+      const plaintextPost = plainTextSerializer.convert(vm.node)
+      const floor = this.getFloorNumber(index) || String((this.pageToLoad - 1) * POST_PER_PAGE + index + 1)
+      searchItems.push({
+        pid: vm.pid,
+        uid: vm.uid,
+        username: vm.username,
+        floor,
+        dateline: vm.timestamp.getTime(),
+        plainText: plaintextPost
+      })
+      const mdNode = tryParseMarkdown(post.node, plaintextPost)
       if (mdNode) {
         this.mdRendered.set(vm.pid, mdNode)
         this.mdRenderShow.set(vm.pid, true)
@@ -887,19 +900,6 @@ struct SinglePostPage {
       postArray.push(vm)
     })
 
-    const searchItems: PostSearchItem[] = []
-    for (let i = 0; i < postArray.length; i++) {
-      const vm = postArray[i]
-      const floor = this.getFloorNumber(i) || String((this.pageToLoad - 1) * POST_PER_PAGE + i + 1)
-      searchItems.push({
-        pid: vm.pid,
-        uid: vm.uid,
-        username: vm.username,
-        floor,
-        dateline: vm.timestamp.getTime(),
-        plainText: plainTextSerializer.convert(vm.node)
-      })
-    }
     this.searchItemsByPage.set(this.pageToLoad, searchItems)
 
     this.updatePostDatetime()
@@ -1437,7 +1437,7 @@ struct SinglePostPage {
     }
     .brightness(this.pageParam.jumpToPid == post.pid && this.pageParam.jumpToPidWithHighlight ?
       (this.appTheme.isDark ? 1.1 : 0.9) : 1)
-    .animation({ duration: 300, iterations: 2 })
+    .animation({ duration: AniSpeed.ratio * 400, iterations: 2 })
     .backgroundColor(this.isPostSelectedForShot(compIndex) ?
       (this.appTheme.isDark ? 'rgba(90,142,137,0.16)' : 'rgba(10,89,247,0.07)') :
       this.appTheme.backgroundSecondary)
