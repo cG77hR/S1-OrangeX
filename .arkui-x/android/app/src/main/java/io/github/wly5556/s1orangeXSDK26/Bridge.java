@@ -44,6 +44,7 @@ import java.io.ByteArrayOutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,17 +81,59 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
     }
 
     public void openInBrowser(String url) {
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.addCategory(Intent.CATEGORY_BROWSABLE);
-            Intent chooserIntent = Intent.createChooser(intent, "打开方式");
-            ComponentName excludedComponent = new ComponentName(context, EntryEntryAbilityActivity.class);
-            chooserIntent.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, new ComponentName[]{excludedComponent});
-            context.startActivity(chooserIntent);
-        } catch (Exception e) {
-            ALog.w("Failed to open URL: ", e.getMessage());
+        MAIN_HANDLER.post(() -> openInBrowserInternal(url));
+    }
+
+    private void openInBrowserInternal(String url) {
+        if (url == null || url.isEmpty()) {
+            return;
         }
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        intent.addCategory(Intent.CATEGORY_BROWSABLE);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        List<ComponentName> excluded = collectSelfComponents(intent);
+        Intent chooserIntent = Intent.createChooser(intent, "打开方式");
+        if (!excluded.isEmpty()) {
+            chooserIntent.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS,
+                    excluded.toArray(new ComponentName[0]));
+        }
+        try {
+            context.startActivity(chooserIntent);
+        } catch (ActivityNotFoundException e) {
+            showToast("未找到可打开链接的浏览器");
+            ALog.w("Bridge", "Chooser not available: " + e.getMessage());
+        } catch (Exception e) {
+            showToast("打开链接失败");
+            ALog.w("Bridge", "Chooser failed: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private List<ComponentName> collectSelfComponents(Intent intent) {
+        List<ComponentName> result = new ArrayList<>();
+        try {
+            PackageManager pm = context.getPackageManager();
+            List<ResolveInfo> resolved;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                resolved = pm.queryIntentActivities(intent,
+                        PackageManager.ResolveInfoFlags.of(0));
+            } else {
+                resolved = pm.queryIntentActivities(intent, 0);
+            }
+            String myPackage = context.getPackageName();
+            for (ResolveInfo ri : resolved) {
+                if (ri.activityInfo == null) {
+                    continue;
+                }
+                if (myPackage.equals(ri.activityInfo.packageName)) {
+                    result.add(new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name));
+                }
+            }
+        } catch (Exception e) {
+            result.add(new ComponentName(context, EntryEntryAbilityActivity.class));
+        }
+        return result;
     }
 
     public void openAppOpenByDefaultSettings() {
