@@ -22,6 +22,7 @@ import { PageSearchPage } from './NavDest/ThreadPostSearch';
 import { LongScreenshotPage } from './NavDest/LongScreenshot';
 import { FreeCopy } from './NavDest/FreeCopy';
 import { WriteReplyPreview } from './NavDest/WriteReplyPreview';
+import { ForumDisplayPrefPage } from './NavDest/ForumDisplayPref';
 
 /**
  * 页面名称。需要对应resources/base/profile/route_map.json内的name。
@@ -52,7 +53,8 @@ export enum PageNameEnum {
   PageSearch = "PageSearch",
   LongScreenshot = "LongScreenshot",
   FreeCopy = "FreeCopy",
-  WriteReplyPreview = "WriteReplyPreview"
+  WriteReplyPreview = "WriteReplyPreview",
+  ForumDisplayPref = "ForumDisplayPref"
 }
 
 @Builder
@@ -105,5 +107,7 @@ export function buildNavDestPage(name: string) {
     FreeCopy()
   } else if (name == PageNameEnum.WriteReplyPreview) {
     WriteReplyPreview()
+  } else if (name == PageNameEnum.ForumDisplayPref) {
+    ForumDisplayPrefPage()
   }
 }

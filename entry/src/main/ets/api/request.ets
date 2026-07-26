@@ -6,9 +6,9 @@ import Account, { Notice } from './model/account';
 import wrapper, { wrapperApp } from './wrapper';
 import { getCache, putCache } from '../common/dataStore/ApiCacheData';
 import { IRcpSession, Rcp, RcpResponse } from '../ArkUIX/Rcp/Rcp';
-import { ShowToast } from '../ArkUIX/Utils/ShowToast';
 import { PreferenceManager } from '../config/UserConfig';
 import { accountInvalid } from '../common/account/AccountManager';
+import { promptAction } from '@kit.ArkUI';
 
 export let userCookieString: string = ''
 
@@ -36,12 +36,32 @@ interface fromCacheError extends reqError {
   data: null
 }
 
+interface ForumMaintenanceResp {
+  error: string
+}
+
 function rejectByCache() {
   const err: fromCacheError = {
     type: 'FromCacheOnly',
     data: null
   }
   return Promise.reject(err)
+}
+
+let forumMaintenanceDialogShown = false
+
+function showForumMaintenanceDialog(message: string) {
+  if (forumMaintenanceDialogShown) {
+    return
+  }
+  forumMaintenanceDialogShown = true
+  promptAction.showDialog({
+    message: message,
+    buttons: [
+      { text: '知道了', color: $r('sys.color.ohos_id_color_emphasize') }
+    ]
+  }).catch(() => {
+  })
 }
 
 export type RequestError = respError | businessError
@@ -82,6 +102,7 @@ export default class request<T> {
   }
 
   private cookieOverride = false
+
   overrideCookie(cookie: Object | null) {
     this.sessionConfig.cookies = cookie as rcp.RequestCookies
     this.cookieOverride = true
@@ -213,16 +234,25 @@ export default class request<T> {
 
             if (this.base == URL.BASE) {
               const webApiData = data as wrapper<Account>
+              const maintenanceData = data as ForumMaintenanceResp
+              if (maintenanceData?.error && !webApiData?.Variables) {
+                showForumMaintenanceDialog(maintenanceData.error)
+                const err: reqError = {
+                  type: 'Response',
+                  data: resp
+                }
+                reject(err)
+                return
+              }
               if (webApiData?.Variables?.notice) {
                 setUserNotice(webApiData.Variables.notice)
               }
               if (webApiData?.Variables?.error) {
-                ShowToast({
-                  message: '论坛异常: ' + webApiData.Variables.error
-                })
+                showForumMaintenanceDialog(webApiData.Variables.error)
               }
               PreferenceManager.readonly(conf => {
-                if (this.sessionConfig.cookies != undefined && webApiData?.Variables && webApiData.Variables.member_uid != conf.user_uid) {
+                if (this.sessionConfig.cookies != undefined && webApiData?.Variables &&
+                  webApiData.Variables.member_uid != conf.user_uid) {
                   accountInvalid()
                 }
               })
