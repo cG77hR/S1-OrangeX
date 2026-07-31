@@ -45,6 +45,8 @@ import {
   PersonalDataBundle,
   selectPersonalDataBundle
 } from '../../common/dataStore/PersonalDataBackup'
+import { collectCrashLogs, CrashLogMode, exportCrashLogs } from '../../common/dataStore/CrashLogData'
+import { CopyText } from '../../ArkUIX/Utils/ShareKit'
 import { Event } from '../../common/Events'
 import { waitFor } from '../../common/AwaitUtil'
 
@@ -73,6 +75,7 @@ export struct PreferencePage {
   @State warnDarkModeSwitch: boolean = false
   @State personalDataWorking: boolean = false
   @State personalDataExportPath: string = ''
+  @State crashLogModeSelected: number = 0
 
   aboutToAppear(): void {
     this.imageCacheUsage = ImageKnife.getInstance().getFileCache()?.currentMemory ?? 0
@@ -640,16 +643,17 @@ export struct PreferencePage {
                   .attributeModifier(this.textSecondary)
                   .width('100%')
               }.attributeModifier(this.settingRow)
+
               Row({ space: 12 }) {
                 Button('导出')
-                  .buttonStyle(ButtonStyleMode.TEXTUAL)
+                  .buttonStyle(ButtonStyleMode.NORMAL)
                   .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
                   .enabled(!this.personalDataWorking)
                   .opacity(this.personalDataWorking ? 0.7 : 1)
                   .layoutWeight(1)
                   .onClick(() => this.exportPersonalDataAction())
                 Button('导入')
-                  .buttonStyle(ButtonStyleMode.TEXTUAL)
+                  .buttonStyle(ButtonStyleMode.NORMAL)
                   .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
                   .enabled(!this.personalDataWorking)
                   .opacity(this.personalDataWorking ? 0.7 : 1)
@@ -665,6 +669,51 @@ export struct PreferencePage {
                 }.attributeModifier(this.settingRow)
               }
             }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
+
+            if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+              SettingGroupHeader({
+                text: '日志导出',
+                fontSizeIndex: this.appState.fontSize
+              })
+              Column() {
+                Row({ space: 12 }) {
+                  Select([
+                    { value: '仅崩溃' } as SelectOption,
+                    { value: '完整日志' } as SelectOption
+                  ])
+                    .value('仅崩溃')
+                    .selected(this.crashLogModeSelected)
+                    .onSelect(index => this.crashLogModeSelected = index)
+                    .layoutWeight(1)
+                  Button('复制')
+                    .buttonStyle(ButtonStyleMode.NORMAL)
+                    .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                    .layoutWeight(1)
+                    .onClick(() => {
+                      const mode: CrashLogMode =
+                        this.crashLogModeSelected == 1 ? CrashLogMode.full : CrashLogMode.crashOnly
+                      collectCrashLogs(mode)
+                        .then((text): void => CopyText(text, '崩溃日志已复制'))
+                        .catch((): void => ShowToast({ message: '崩溃日志复制失败' }))
+                    })
+                  Button('保存')
+                    .buttonStyle(ButtonStyleMode.NORMAL)
+                    .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                    .layoutWeight(1)
+                    .onClick(() => {
+                      const mode: CrashLogMode =
+                        this.crashLogModeSelected == 1 ? CrashLogMode.full : CrashLogMode.crashOnly
+                      exportCrashLogs(this.context, mode)
+                        .then(path => {
+                          if (path) {
+                            ShowToast({ message: '崩溃日志已导出' })
+                          }
+                        })
+                        .catch((): void => ShowToast({ message: '崩溃日志导出失败' }))
+                    })
+                }.attributeModifier(this.settingRow)
+              }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
+            }
 
           }
           .padding({
