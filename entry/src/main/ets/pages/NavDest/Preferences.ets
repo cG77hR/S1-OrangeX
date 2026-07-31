@@ -455,7 +455,7 @@ export struct PreferencePage {
               if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
                 Row() {
                   Column({ space: SettingColumnSpace }) {
-                    this.TextPrimary('让S1链接可以用本应用打开')
+                    this.TextPrimary('让S1链接默认用本应用打开')
                     Text('点击前往系统设置，在“要在此应用中打开的链接”项目中，勾选stage1st.com')
                       .attributeModifier(this.textSecondary)
                   }.SettingColumn()

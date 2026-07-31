@@ -92,48 +92,80 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         intent.addCategory(Intent.CATEGORY_BROWSABLE);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-        List<ComponentName> excluded = collectSelfComponents(intent);
-        Intent chooserIntent = Intent.createChooser(intent, "打开方式");
-        if (!excluded.isEmpty()) {
-            chooserIntent.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS,
-                    excluded.toArray(new ComponentName[0]));
+        String myPackage = context.getPackageName();
+        List<ResolveInfo> resolved = queryIntentActivitiesCompat(intent);
+        List<ResolveInfo> browsers = new ArrayList<>();
+        List<ComponentName> selfComponents = new ArrayList<>();
+        for (ResolveInfo ri : resolved) {
+            if (ri.activityInfo == null) {
+                continue;
+            }
+            if (myPackage.equals(ri.activityInfo.packageName)) {
+                selfComponents.add(new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name));
+            } else {
+                browsers.add(ri);
+            }
         }
-        try {
-            context.startActivity(chooserIntent);
-        } catch (ActivityNotFoundException e) {
+        // 本应用经 App Links 验证为 stage1st.com 默认处理者时，以该具体 URL 查询可能不返回浏览器
+        // （系统把该 URL 视作已被本应用认领）。改用不会被任何应用认领的通用 https URL 再查一次。
+        if (browsers.isEmpty()) {
+            Intent generic = new Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"));
+            generic.addCategory(Intent.CATEGORY_BROWSABLE);
+            for (ResolveInfo ri : queryIntentActivitiesCompat(generic)) {
+                if (ri.activityInfo == null) {
+                    continue;
+                }
+                if (!myPackage.equals(ri.activityInfo.packageName)) {
+                    browsers.add(ri);
+                }
+            }
+        }
+        if (selfComponents.isEmpty()) {
+            selfComponents.add(new ComponentName(context, EntryEntryAbilityActivity.class));
+        }
+
+        if (browsers.isEmpty()) {
             showToast("未找到可打开链接的浏览器");
-            ALog.w("Bridge", "Chooser not available: " + e.getMessage());
+            return;
+        }
+        // 仅一个浏览器时直接拉起。setPackage 指定目标浏览器可绕过 App Links 把链接还给自身的默认处理。
+        if (browsers.size() == 1) {
+            intent.setPackage(browsers.get(0).activityInfo.packageName);
+            try {
+                context.startActivity(intent);
+            } catch (Exception e) {
+                showToast("打开链接失败");
+                ALog.w("Bridge", "openInBrowser failed: " + e.getMessage());
+            }
+            return;
+        }
+        // 多个浏览器：弹选择器。App Links 下 chooser 候选集可能仅剩自身（排除后为空），
+        // 故额外用 EXTRA_INITIAL_INTENTS 显式塞入各浏览器，确保它们一定出现。
+        Intent chooser = Intent.createChooser(intent, "打开方式");
+        chooser.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS,
+                selfComponents.toArray(new ComponentName[0]));
+        Intent[] initialIntents = new Intent[browsers.size()];
+        for (int i = 0; i < browsers.size(); i++) {
+            Intent bi = new Intent(intent);
+            bi.setPackage(browsers.get(i).activityInfo.packageName);
+            initialIntents[i] = bi;
+        }
+        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, initialIntents);
+        try {
+            context.startActivity(chooser);
         } catch (Exception e) {
             showToast("打开链接失败");
-            ALog.w("Bridge", "Chooser failed: " + e.getMessage());
+            ALog.w("Bridge", "openInBrowser failed: " + e.getMessage());
         }
     }
 
     @SuppressWarnings("deprecation")
-    private List<ComponentName> collectSelfComponents(Intent intent) {
-        List<ComponentName> result = new ArrayList<>();
-        try {
-            PackageManager pm = context.getPackageManager();
-            List<ResolveInfo> resolved;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                resolved = pm.queryIntentActivities(intent,
-                        PackageManager.ResolveInfoFlags.of(0));
-            } else {
-                resolved = pm.queryIntentActivities(intent, 0);
-            }
-            String myPackage = context.getPackageName();
-            for (ResolveInfo ri : resolved) {
-                if (ri.activityInfo == null) {
-                    continue;
-                }
-                if (myPackage.equals(ri.activityInfo.packageName)) {
-                    result.add(new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name));
-                }
-            }
-        } catch (Exception e) {
-            result.add(new ComponentName(context, EntryEntryAbilityActivity.class));
+    private List<ResolveInfo> queryIntentActivitiesCompat(Intent intent) {
+        PackageManager pm = context.getPackageManager();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0));
         }
-        return result;
+        return pm.queryIntentActivities(intent, 0);
     }
 
     public void openAppOpenByDefaultSettings() {
