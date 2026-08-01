@@ -206,7 +206,7 @@ export struct DraftPage {
         .width('100%')
         .height('100%')
         .scrollBar(BarState.Off)
-        .padding({ left:6, right: 6 })
+        .padding({ left:16, right: 16 })
         .backgroundColor(this.appTheme.backgroundSecondary)
         .constraintSize({
           minHeight: '100%'
