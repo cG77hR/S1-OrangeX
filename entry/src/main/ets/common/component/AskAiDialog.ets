@@ -3,11 +3,26 @@ import { AppThemeColor } from '../theme/basic/basic'
 import { ThemeColorLight } from '../theme/basic/light'
 import { AniSpeed } from '../Animation'
 import { FontSizeEnum } from '../fontSize/FontSizeEnum'
+import { AskAiTargetApp } from '../../config/v1/default'
 import { UIRootNode } from './ThreadPostContent'
+import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
+import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { ShareText } from '../../ArkUIX/Utils/ShareKit'
-import { buildAskAiMarkdown, buildAskAiPayload, computeAskAiStats } from '../AskAiUtil'
+import { AI_APP_NAMES, buildAskAiMarkdown, buildAskAiPayload, computeAskAiStats, getAiAppPackageName } from '../AskAiUtil'
 import { PreferenceManager } from '../../config/UserConfig'
 import { defaultApplicationConfig } from '../../config/v1/default'
+
+const AI_APP_SELECT_OPTIONS: SelectOption[] = [
+  { value: AI_APP_NAMES[AskAiTargetApp.Doubao] },
+  { value: AI_APP_NAMES[AskAiTargetApp.DeepSeek] },
+  { value: AI_APP_NAMES[AskAiTargetApp.Qwen] },
+  { value: AI_APP_NAMES[AskAiTargetApp.Yuanbao] },
+  { value: AI_APP_NAMES[AskAiTargetApp.Kimi] },
+  { value: AI_APP_NAMES[AskAiTargetApp.Zhipu] },
+  { value: AI_APP_NAMES[AskAiTargetApp.ChatGPT] },
+  { value: AI_APP_NAMES[AskAiTargetApp.Gemini] },
+  { value: AI_APP_NAMES[AskAiTargetApp.Other] }
+]
 
 @CustomDialog
 export struct AskAiDialog {
@@ -21,6 +36,7 @@ export struct AskAiDialog {
   @Prop postSubject: string = ''
   @Prop appTheme: AppThemeColor = new ThemeColorLight()
   @Prop fontSize: number = 0
+  @State selectedApp: AskAiTargetApp = defaultApplicationConfig.ask_ai_target_app
   @State includeQuotes: boolean = defaultApplicationConfig.ask_ai_include_quoted
   @State includeMainPost: boolean = defaultApplicationConfig.ask_ai_include_main
   @State inputText: string = ''
@@ -31,6 +47,7 @@ export struct AskAiDialog {
 
   aboutToAppear(): void {
     PreferenceManager.readonly(conf => {
+      this.selectedApp = conf.ask_ai_target_app
       this.includeQuotes = conf.ask_ai_include_quoted
       this.includeMainPost = conf.ask_ai_include_main
       this.updateStats()
@@ -74,6 +91,13 @@ export struct AskAiDialog {
     this.updateStats()
   }
 
+  onTargetAppChange(app: AskAiTargetApp): void {
+    this.selectedApp = app
+    PreferenceManager.modify(conf => {
+      conf.ask_ai_target_app = app
+    })
+  }
+
   async sendToAi(prompt: string): Promise<void> {
     if (this.sending) {
       return
@@ -84,13 +108,39 @@ export struct AskAiDialog {
     this.sending = true
     const payload = await buildAskAiPayload(this.postNodes, this.postAuthor, this.postDateline,
       this.postTid, this.postPid, this.postSubject, this.includeMainPost, this.includeQuotes, prompt)
-    ShareText(payload, this.context)
+    if (this.selectedApp == AskAiTargetApp.Other) {
+      ShareText(payload, this.context)
+      this.sending = false
+      this.controller.close()
+      return
+    }
+    const packageName = getAiAppPackageName(this.selectedApp)
+    const success = await PlatformBridge.shareTextToPackage(payload, packageName)
     this.sending = false
-    this.controller.close()
+    if (success) {
+      this.controller.close()
+    } else {
+      ShowToast({ message: '可能未安装该应用' })
+    }
   }
 
   build() {
     Column({ space: 16 }) {
+      Row({ space: 12 }) {
+        Text('目标应用')
+          .fontSize(FontSizeEnum[this.fontSize].vp16)
+          .fontColor(this.appTheme.fontSecondary)
+        Select(AI_APP_SELECT_OPTIONS)
+          .selected(this.selectedApp)
+          .value(AI_APP_NAMES[this.selectedApp])
+          .onSelect((index: number) => {
+            this.onTargetAppChange(index as AskAiTargetApp)
+          })
+          .layoutWeight(1)
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
+
       Row({ space: 12 }) {
         Text('上下文')
           .fontSize(FontSizeEnum[this.fontSize].vp16)

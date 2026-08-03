@@ -51,6 +51,18 @@ export enum ForumSortMode {
   custom = 1
 }
 
+export enum AskAiTargetApp {
+  Doubao = 0,
+  DeepSeek = 1,
+  Qwen = 2,
+  Yuanbao = 3,
+  Kimi = 4,
+  Zhipu = 5,
+  ChatGPT = 6,
+  Gemini = 7,
+  Other = 8
+}
+
 /**
  * 应用版本检查的间隔
  */
@@ -104,6 +116,7 @@ export class ApplicationConfig {
   custom_theme_colours: Record<string, string> = {}
   ask_ai_include_quoted: boolean = true
   ask_ai_include_main: boolean = true
+  ask_ai_target_app: AskAiTargetApp = AskAiTargetApp.Doubao
 }
 
 export const defaultApplicationConfig = new ApplicationConfig()

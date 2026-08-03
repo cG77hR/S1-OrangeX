@@ -23,7 +23,8 @@ enum BridgeFunction {
   getProcessTextActions = "getProcessTextActions",
   processSelectedText = "processSelectedText",
   onProcessTextActions = "onProcessTextActions",
-  opens1like = "opens1like"
+  opens1like = "opens1like",
+  shareTextToPackage = "shareTextToPackage"
 }
 
 type BridgeCallback = (...parameters: bridge.Message[]) => bridge.ResultValue
@@ -83,6 +84,11 @@ class PlatformBridgeClass {
   async shareText(text: string) {
     const impl = await this.getImpl()
     return impl.callMethod(BridgeFunction.shareText, text)
+  }
+
+  async shareTextToPackage(text: string, packageName: string): Promise<boolean> {
+    const impl = await this.getImpl()
+    return await impl.callMethod(BridgeFunction.shareTextToPackage, text, packageName) as boolean
   }
 
   async shareImage(path: string, ext: string) {

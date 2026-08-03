@@ -247,6 +247,24 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         }
     }
 
+    public boolean shareTextToPackage(String text, String packageName) {
+        if (packageName == null || packageName.isEmpty()) {
+            return false;
+        }
+        Intent sendIntent = new Intent(Intent.ACTION_SEND);
+        sendIntent.setType("text/plain");
+        sendIntent.putExtra(Intent.EXTRA_TEXT, text);
+        sendIntent.setPackage(packageName);
+        sendIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            context.startActivity(sendIntent);
+            return true;
+        } catch (ActivityNotFoundException | SecurityException e) {
+            ALog.w("Bridge", "shareTextToPackage failed for " + packageName + ": " + e.getMessage());
+            return false;
+        }
+    }
+
     public void refreshProcessTextActions() {
         PackageManager packageManager = context.getPackageManager();
         Intent queryIntent = new Intent(Intent.ACTION_PROCESS_TEXT);

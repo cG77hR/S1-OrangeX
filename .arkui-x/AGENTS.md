@@ -15,7 +15,7 @@
 
 ```
 .arkui-x/                         ArkUI-X 工程壳（Android/iOS 原生层）
-  android/app/src/main/java/io/github/wly5556/s1orangeX/
+  android/app/src/main/java/io/github/wly5556/s1orangeXSDK26/
     Bridge.java                   原生桥：剪贴板/分享/Toast/状态栏/夜间模式/键盘/选图/下载 等
     EntryEntryAbilityActivity.java Activity：窗口 insets（状态栏/导航栏/键盘）回调
     MyApplication.java
@@ -157,7 +157,7 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 新增需要原生支持的能力时，三处同步：
 
 1. `ArkUIX/BridgeFunction.ets`：`BridgeFunction` 枚举加一项 + `PlatformBridgeClass` 加一个 async 方法（`callMethod`）。
-2. `.arkui-x/android/app/src/main/java/io/github/wly5556/s1orangeX/Bridge.java`：加 `@Method` 注解的 public 方法。
+2. `.arkui-x/android/app/src/main/java/io/github/wly5556/s1orangeXSDK26/Bridge.java`：加 `@Method` 注解的 public 方法。
 3. 若是回调型（如 `onWindowInsetsListener`、`onPhotoPickerResult`），用 `registerMethod` + `pushRegisterMethod`（见 `BridgeFunction.ets`），并在 `rebindListeners` 里能自动重绑。
 
 **约定**：bridge 返回值用基础类型（number/string/number[]），复杂对象在 TS 侧组装。窗口 insets 回调目前传 `(statusBar, navigationBar, keyboard)` 三参。
@@ -175,7 +175,6 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 - **`setColorMode` 跨平台（SDK26 🟡）**：不要把业务逻辑直接绑到 `context.setColorMode` 上。深浅色模式在 Android 继续走 `PlatformBridge.setNightMode` + 手动维护 `AppStorage(PropKey.currentColorMode)`（见 `ArkUIX/Utils/SetNightMode.ets` 与 `EntryAbility.ets`），业务代码统一走 `SetNightMode()`。
 - **`request.agent` 下载需 header 认证时失败（🔴）**：Android 桥接层 `canMakeRequest` 会额外发一次不带 header 的预请求。用 `DownloadFile`（`ArkUIX/Utils/Download.ets`）规避，**不要**直接用 `request.agent`。
 - **`Image` svg `fillColor`（SDK26 🟢）**：当前可正常使用 `.fillColor(...)`。涉及 svg 图标着色时按现有写法保持即可。
-- **组件阴影 `shadow()` 失效（🔴）**：避免依赖阴影做视觉区分。
 - **`geometryTransition` 落点偏移**：`ThreadPostList` 里图片预览转场被临时改为 `TransitionEffect.opacity(0)`，合并 upstream 对该转场的改动时不要盲目恢复。
 - **子线程内 `vp2px` 未定义（🔴）**：`ImageKnife` 用了修改过的 har（`libs/ImageKnife3.2.0.har`），从主线程传 vp/px 比例；**不要**替换成 ohpm 上的原版。
 - **`setTimeout` 不传 delay 不执行回调（🔴）**：始终显式传 `delay`（哪怕是 0）。

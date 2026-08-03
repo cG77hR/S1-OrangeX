@@ -1,3 +1,4 @@
+import { AskAiTargetApp } from '../config/v1/default'
 import { markdownSerializer } from './ThreadPostContentSerializer'
 import {
   GeneralNode,
@@ -10,6 +11,31 @@ import { URL } from '../api/base'
 import request from '../api/request'
 import { ThreadDataApp } from '../api/model/app/thread'
 import { wrapperApp } from '../api/wrapper'
+
+const AI_APP_PACKAGES: string[] = []
+AI_APP_PACKAGES[AskAiTargetApp.Doubao] = 'com.larus.nova'
+AI_APP_PACKAGES[AskAiTargetApp.Yuanbao] = 'com.tencent.hunyuan.app.chat'
+AI_APP_PACKAGES[AskAiTargetApp.DeepSeek] = 'com.deepseek.chat'
+AI_APP_PACKAGES[AskAiTargetApp.Kimi] = 'com.moonshot.kimichat'
+AI_APP_PACKAGES[AskAiTargetApp.ChatGPT] = 'com.openai.chat'
+AI_APP_PACKAGES[AskAiTargetApp.Zhipu] = 'com.zhipuai.qingyan'
+AI_APP_PACKAGES[AskAiTargetApp.Qwen] = 'com.aliyun.tongyi'
+AI_APP_PACKAGES[AskAiTargetApp.Gemini] = 'com.google.android.apps.bard'
+
+export function getAiAppPackageName(app: AskAiTargetApp): string {
+  return AI_APP_PACKAGES[app] ?? ''
+}
+
+export const AI_APP_NAMES: string[] = []
+AI_APP_NAMES[AskAiTargetApp.Doubao] = '豆包'
+AI_APP_NAMES[AskAiTargetApp.Yuanbao] = '元宝'
+AI_APP_NAMES[AskAiTargetApp.DeepSeek] = 'DeepSeek'
+AI_APP_NAMES[AskAiTargetApp.Kimi] = 'Kimi'
+AI_APP_NAMES[AskAiTargetApp.ChatGPT] = 'ChatGPT'
+AI_APP_NAMES[AskAiTargetApp.Zhipu] = '智谱清言'
+AI_APP_NAMES[AskAiTargetApp.Qwen] = '千问'
+AI_APP_NAMES[AskAiTargetApp.Gemini] = 'Gemini'
+AI_APP_NAMES[AskAiTargetApp.Other] = '其它（分享提示词）'
 
 const SECTION_SEPARATOR = '\n\n---\n\n'
 

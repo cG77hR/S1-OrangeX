@@ -20,6 +20,14 @@
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
+        <package android:name="com.larus.nova" />
+        <package android:name="com.tencent.hunyuan.app.chat" />
+        <package android:name="com.deepseek.chat" />
+        <package android:name="com.moonshot.kimichat" />
+        <package android:name="com.openai.chat" />
+        <package android:name="com.zhipuai.qingyan" />
+        <package android:name="com.google.android.apps.bard" />
+        <package android:name="com.aliyun.tongyi" />
     </queries>
     <application
             android:name="io.github.wly5556.s1orangeXSDK26.MyApplication"
