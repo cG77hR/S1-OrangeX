@@ -129,6 +129,7 @@ export class ApplicationConfig {
   ask_ai_include_previous: boolean = false
   ask_ai_target_app: AskAiTargetApp = AskAiTargetApp.Doubao
   recommend_enabled: boolean = false
+  recommend_debug: boolean = false
   recommend_top_k: number = 3
   recommend_weights: RecommendWeights = new RecommendWeights()
 }
