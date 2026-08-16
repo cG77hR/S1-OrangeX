@@ -69,6 +69,7 @@ import { deviceInfo } from '@kit.BasicServicesKit';
 import { ThreadPostAttachmentItem } from '../../common/component/ThreadPostAttachmentItem'
 import { UserCreditText } from '../../common/component/UserCredit'
 import { openFreeCopy } from './FreeCopy'
+import { Recommend } from '../../common/recommend/RecommendManager'
 
 export interface PostViewModel {
   node: UIRootNode[]
@@ -523,6 +524,7 @@ export struct ThreadPostList {
         }
       }
       this.pageParam = pageParam
+      Recommend.onThreadPostShown(this.pageParam.tid)
       if (this.pageParam.jumpToPid && this.pageParam.jumpToPid != '0') {
         this.jumpToPost = this.pageParam.jumpToPid
         this.contentVisible = false
@@ -542,6 +544,7 @@ export struct ThreadPostList {
         },)
     })
     .onShown(() => {
+      Recommend.onThreadPostShown(this.pageParam.tid)
       if (this.replyButtonExpand) {
         this.getUIContext().animateTo(SpringCurve, () => {
           this.replyButtonExpand = false
@@ -549,6 +552,7 @@ export struct ThreadPostList {
       }
     })
     .onWillHide(() => {
+      Recommend.onThreadPostHidden(this.pageParam.tid)
       FlushThreadViewHistory(this.pageParam.tid)
     })
     .onBackPressed(() => {
@@ -565,6 +569,7 @@ export struct ThreadPostList {
       return false
     })
     .onWillDisappear(() => {
+      Recommend.onThreadPostHidden(this.pageParam.tid)
       FlushThreadViewHistory(this.pageParam.tid)
       this.context.eventHub.off(openImgViewerEventName(this.pageParam))
     })
@@ -691,6 +696,7 @@ struct SinglePostPage {
     alignment: DialogAlignment.Center
   })
   @State askAiDialogPost: PostViewModel | undefined = undefined
+  @State askAiDialogFloorNumber: string = ''
   askAiDialogController: CustomDialogController = new CustomDialogController({
     builder: AskAiDialog({
       postNodes: this.askAiDialogPost ? this.askAiDialogPost.node : [],
@@ -699,6 +705,7 @@ struct SinglePostPage {
       postTid: this.pageParam.tid,
       postPid: this.askAiDialogPost ? this.askAiDialogPost.pid : '',
       postSubject: this.pageParam.subject || '',
+      postFloorNumber: this.askAiDialogFloorNumber,
       appTheme: this.appTheme,
       fontSize: this.appState.fontSize
     }),
@@ -1095,7 +1102,7 @@ struct SinglePostPage {
     return this.postFloorNumber.get(compIndex) ?? ''
   }
 
-  buildPostMenu(post: PostViewModel): MenuElement[] {
+  buildPostMenu(post: PostViewModel, compIndex: number): MenuElement[] {
     let menu: MenuElement[] = []
     menu.push({
       value: '回复',
@@ -1162,6 +1169,8 @@ struct SinglePostPage {
       value: '问AI',
       action: () => {
         this.askAiDialogPost = post
+        this.askAiDialogFloorNumber = this.getFloorNumber(compIndex) ||
+          String((this.pageToLoad - 1) * POST_PER_PAGE + compIndex + 1)
         this.askAiDialogController.open()
       }
     })
@@ -1361,7 +1370,7 @@ struct SinglePostPage {
               this.buildFloorNumber({
                 pid: post.pid,
                 floorNumber: this.getFloorNumber(compIndex),
-                menu: this.buildPostMenu(post)
+                menu: this.buildPostMenu(post, compIndex)
               })
             }
           }.alignItems(HorizontalAlign.Start)

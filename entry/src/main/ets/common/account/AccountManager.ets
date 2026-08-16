@@ -17,13 +17,13 @@ import Account from '../../api/model/account'
 import { rcp } from '@kit.RemoteCommunicationKit'
 import { LoginResultApp } from '../../api/model/app/login'
 import { BlockListSetUser, clearBlockList } from '../dataStore/BlockUser'
-import { promptAction } from '@kit.ArkUI'
 import { clearDraft, DraftDbSetUser } from '../dataStore/DraftData'
 import { waitFor } from '../AwaitUtil'
 import { Event } from '../Events'
 import { PropKey } from '../Constants'
 import { ApiCacheSetUser, clearApiCache } from '../dataStore/ApiCacheData'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { Recommend } from '../recommend/RecommendManager'
 import json from '@ohos.util.json'
 
 export enum LoginResult {
@@ -236,6 +236,7 @@ function accountPromiseReset() {
       await DraftDbSetUser(conf.user_uid)
       await BlockListSetUser(conf.user_uid)
       await ApiCacheSetUser(conf.user_uid)
+      Recommend.setUser(conf.user_uid)
       AppStorage.setOrCreate<string>(PropKey.userId, conf.user_uid)
     })
     resolve()

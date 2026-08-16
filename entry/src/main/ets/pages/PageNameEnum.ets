@@ -24,6 +24,7 @@ import { FreeCopy } from './NavDest/FreeCopy';
 import { WriteReplyPreview } from './NavDest/WriteReplyPreview';
 import { ForumDisplayPrefPage } from './NavDest/ForumDisplayPref';
 import { CustomThemePage } from './NavDest/CustomTheme';
+import { RecommendPage } from './NavDest/RecommendPage';
 
 /**
  * 页面名称。需要对应resources/base/profile/route_map.json内的name。
@@ -56,7 +57,8 @@ export enum PageNameEnum {
   FreeCopy = "FreeCopy",
   WriteReplyPreview = "WriteReplyPreview",
   ForumDisplayPref = "ForumDisplayPref",
-  CustomTheme = "CustomTheme"
+  CustomTheme = "CustomTheme",
+  Recommend = "Recommend"
 }
 
 @Builder
@@ -113,5 +115,7 @@ export function buildNavDestPage(name: string) {
     ForumDisplayPrefPage()
   } else if (name == PageNameEnum.CustomTheme) {
     CustomThemePage()
+  } else if (name == PageNameEnum.Recommend) {
+    RecommendPage()
   }
 }
