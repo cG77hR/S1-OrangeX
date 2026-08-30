@@ -10,11 +10,10 @@ export struct SlideDialog {
   controller: CustomDialogController
 
   isPageValid(value: string) {
-    let page = -1
-    if (isNaN(parseInt(value))) {
+    let page = parseInt(value)
+    if (isNaN(page)) {
       page = 1
     }
-    page = parseInt(value)
     if (page < 1) {
       page = 1
     }

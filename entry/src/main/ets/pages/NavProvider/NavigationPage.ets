@@ -64,7 +64,6 @@ export interface PreferenceState {
   contentLineSpace: number
   updateCheckInterval: UpdateCheckInterval
   recommendEnabled: boolean
-  recommendDebug: boolean
 }
 
 @Entry
@@ -88,8 +87,7 @@ struct NavigationPage {
     threadItemGap: defaultApplicationConfig.thread_item_gap,
     contentLineSpace: defaultApplicationConfig.content_line_space,
     updateCheckInterval: defaultApplicationConfig.update_check_interval,
-    recommendEnabled: defaultApplicationConfig.recommend_enabled,
-    recommendDebug: defaultApplicationConfig.recommend_debug
+    recommendEnabled: defaultApplicationConfig.recommend_enabled
   }
   appThemeWhenLightMode: AppThemeColor = new ThemeColorLight()
   @Provide @Watch('updateStatesBarColor') appTheme: AppThemeColor = new ThemeColorLight()
@@ -142,7 +140,6 @@ struct NavigationPage {
       this.appState.contentLineSpace = conf.content_line_space
       this.appState.updateCheckInterval = conf.update_check_interval
       this.appState.recommendEnabled = conf.recommend_enabled
-      this.appState.recommendDebug = conf.recommend_debug
       AnimationSetUp(conf.ani_speed_ratio)
       PostSignature.init(conf.post_signature,
         this.context.resourceManager.getStringSync($r('app.string.app_name').id),
