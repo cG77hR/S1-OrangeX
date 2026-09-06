@@ -31,6 +31,7 @@ import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
 import { dupTextRange } from '../../common/TextUtil'
 import { bbCodeSerializer, markdownParser } from '../../common/ThreadPostContentSerializer'
 import { openWriteReplyPreview, WriteReplyPreviewParam } from './WriteReplyPreview'
+import hilog from '@ohos.hilog'
 
 export enum WriteReplyMode {
   NEW_THREAD,
@@ -148,6 +149,8 @@ export struct WriteReply {
     replied: false
   }
   caretRePos?: number = undefined
+  scroller: Scroller = new Scroller()
+  scrollHeight: number = 0
   controller: TextAreaController = new TextAreaController()
   toolPanelController: SwiperController = new SwiperController()
   lastRequestReply: number = 0
@@ -164,9 +167,13 @@ export struct WriteReply {
 
   onEditorFocus() {
     if (this.focusedEditorCount === 0) {
-      this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE)
+      if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+        this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE)
+      } else {
+        this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.NONE)
+      }
+      this.focusedEditorCount++
     }
-    this.focusedEditorCount++
   }
 
   onEditorBlur() {
@@ -343,7 +350,7 @@ export struct WriteReply {
           PlatformBridge.hideSoftKeyboard().then(() => {
             // 隐藏android系统键盘会导致textarea blur，并清除选区，需要主动focus
             // this.getUIContext().getFocusController().requestFocus 是同步focus方法，但不支持arkuix
-             // 只能等待blur后，再focus并恢复选区
+            // 只能等待blur后，再focus并恢复选区
             this.selectionRePosWhenBlur = selection
           })
         }
@@ -497,64 +504,69 @@ export struct WriteReply {
           })
         }
 
-        Scroll() {
-          Column() {
-            if (this.pageParam.mode == WriteReplyMode.NEW_PM) {
-              Text(`向 ${this.pageParam.subjectToReply} 发送私信: `)
-                .width('100%')
-                .textAlign(TextAlign.Start)
-                .opacity(.7)
-              Divider().padding({
-                top: 20,
-                bottom: 20
-              })
-            } else if (this.pageParam.mode == WriteReplyMode.NEW_THREAD
-              || (this.pageParam.mode == WriteReplyMode.EDIT && this.initialFieldToInput.subject) // 编辑主题帖
-            ) {
-              if (this.essentialDataReady) {
-                Column({ space: 12 }) {
-                  Row({ space: 12 }) {
-                    Text('分类')
-                    Select(this.threadTypeList.map((v): SelectOption => ({
-                      value: v.name
-                    }))).selected($$this.fieldToInput.threadTypeIndex)
-                      .value(this.threadTypeList.length > 0 ?
-                      this.threadTypeList[this.fieldToInput.threadTypeIndex].name :
-                        '')
-                      .flexGrow(1)
-                  }.width('100%')
+        List({ scroller: this.scroller }) {
+          ListItem() {
+            Column() {
+              if (this.pageParam.mode == WriteReplyMode.NEW_PM) {
+                Text(`向 ${this.pageParam.subjectToReply} 发送私信: `)
+                  .width('100%')
+                  .textAlign(TextAlign.Start)
+                  .opacity(.7)
+                Divider().padding({
+                  top: 20,
+                  bottom: 20
+                })
+              } else if (this.pageParam.mode == WriteReplyMode.NEW_THREAD
+                || (this.pageParam.mode == WriteReplyMode.EDIT && this.initialFieldToInput.subject) // 编辑主题帖
+              ) {
+                if (this.essentialDataReady) {
+                  Column({ space: 12 }) {
+                    Row({ space: 12 }) {
+                      Text('分类')
+                      Select(this.threadTypeList.map((v): SelectOption => ({
+                        value: v.name
+                      }))).selected($$this.fieldToInput.threadTypeIndex)
+                        .value(this.threadTypeList.length > 0 ?
+                          this.threadTypeList[this.fieldToInput.threadTypeIndex].name :
+                          '')
+                        .flexGrow(1)
+                    }.width('100%')
 
-                  TextArea({
-                    text: $$this.fieldToInput.subject,
-                    placeholder: '填写标题'
-                  }).maxLength(80).fontSize(FontSizeEnum[this.appState.fontSize].vp18)
-                    .onFocus(() => this.onEditorFocus())
-                    .onBlur(() => this.onEditorBlur())
-                }.margin({ bottom: 20 })
-              } else {
-                this.loadingCard()
-              }
-            } else if (this.pageParam.mode == WriteReplyMode.NEW_POST_QUOTE || this.pageParam.subjectToReply) {
-              Column() {
-                if (this.pageParam.mode == WriteReplyMode.NEW_POST_QUOTE
-                  && this.quote) {
-                  this.quoteCard()
-                } else if (this.pageParam.subjectToReply && this.essentialDataReady) {
-                  this.replyThreadCard()
+                    TextArea({
+                      text: $$this.fieldToInput.subject,
+                      placeholder: '填写标题'
+                    }).maxLength(80).fontSize(FontSizeEnum[this.appState.fontSize].vp18)
+                      .onFocus(() => this.onEditorFocus())
+                      .onBlur(() => this.onEditorBlur())
+                  }.margin({ bottom: 20 })
                 } else {
                   this.loadingCard()
                 }
-              }
-              .alignItems(HorizontalAlign.Start)
-              .borderRadius(8)
-              .padding(6)
-              .opacity(0.9)
-              .backgroundColor(this.appTheme.isDark ? '#1fffffff' : '#0f000000')
-              .width('100%')
-              .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms120 }))
+              } else if (this.pageParam.mode == WriteReplyMode.NEW_POST_QUOTE || this.pageParam.subjectToReply) {
+                Column() {
+                  if (this.pageParam.mode == WriteReplyMode.NEW_POST_QUOTE
+                    && this.quote) {
+                    this.quoteCard()
+                  } else if (this.pageParam.subjectToReply && this.essentialDataReady) {
+                    this.replyThreadCard()
+                  } else {
+                    this.loadingCard()
+                  }
+                }
+                .alignItems(HorizontalAlign.Start)
+                .borderRadius(8)
+                .padding(6)
+                .opacity(0.9)
+                .backgroundColor(this.appTheme.isDark ? '#1fffffff' : '#0f000000')
+                .width('100%')
+                .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms120 }))
 
-              Divider().margin(12)
-            }
+                Divider().margin(12)
+              }
+            }.margin({ top: 16 })
+          }
+
+          ListItem() {
             TextArea({
               text: $$this.fieldToInput.content,
               controller: this.controller,
@@ -586,7 +598,7 @@ export struct WriteReply {
                 }
               })
               .onFocus(() => {
-                if(this.selectionRePosWhenBlur !== undefined) {
+                if (this.selectionRePosWhenBlur !== undefined) {
                   this.controller.setTextSelection(this.selectionRePosWhenBlur.start, this.selectionRePosWhenBlur.end)
                   this.selectionRePosWhenBlur = undefined
                 }
@@ -605,6 +617,7 @@ export struct WriteReply {
               })
               .backgroundColor('#00000000')
               .padding(0)
+              .margin({ bottom: 16 })
               .borderRadius(0)
           }
         }
@@ -613,10 +626,39 @@ export struct WriteReply {
           scrollBackward: NestedScrollMode.PARENT_FIRST
         })
         .width('100%')
-        .padding(16)
+        .padding({ left: 16, right: 16 })
         .flexGrow(1)
         .flexShrink(1)
         .backgroundColor(this.appTheme.backgroundSecondary)
+        .onSizeChange((oldValue: SizeOptions, newValue: SizeOptions) => {
+          if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+            const newScrollH = newValue.height as number ?? 0
+            const oldScrollH = oldValue.height as number ?? 0
+            const kbH = px2vp(this.keyboardHeight)
+            if (this.scrollHeight == 0 || this.scrollHeight != newScrollH + kbH) {
+              this.scrollHeight = newScrollH
+            } else if (oldScrollH - kbH == newScrollH) {
+              // android 上的 KeyboardAvoidMode.RESIZE 在 sdk 26 beta 1 没效果，需要模拟下
+              // 这里用于避免压缩文本输入区域后，光标被推出显示区域
+              const topPadding = this.scroller.getItemRect(0).height
+              const caretY = px2vp(this.controller.getCaretOffset().y)
+              const scrollY = this.scroller.currentOffset()?.yOffset || 0
+              const scrollHeight = this.scrollHeight
+              const diff =
+                topPadding + caretY -
+                  (scrollY + scrollHeight - kbH - TOOL_BAR_HEIGHT * 2) // *2 多留点空间，不然贴着太挤
+              if (diff > 0) {
+                setTimeout(() => {
+                  this.scroller.scrollTo({
+                    animation: true,
+                    yOffset: scrollY + diff,
+                    xOffset: 0
+                  })
+                }, 30)
+              }
+            }
+          }
+        })
 
         Row() {
           this.toolBarButton($r('app.media.face_smiling'), 1)
@@ -755,14 +797,19 @@ export struct WriteReply {
           .backgroundColor(this.appTheme.backgroundTertiary)
           .expandSafeArea([SafeAreaType.KEYBOARD, SafeAreaType.SYSTEM])
           .height(this.showTools ? px2vp(this.keyboardExpendHeight) :
-            this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : 0)
+            this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : (
+              PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS ? 0 : px2vp(this.keyboardHeight)
+            ))
           .clip(true)
           .animation(SpringCurve)
           .width('100%')
         }
       }.width('100%')
       .height('100%')
-    }.hideTitleBar(true)
+    }
+    .hideTitleBar(true)
+    .expandSafeArea(
+      PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS ? [] : [SafeAreaType.KEYBOARD, SafeAreaType.SYSTEM])
     .onReady(async (context: NavDestinationContext) => {
       this.pathStack = context.pathStack
 
@@ -793,10 +840,12 @@ export struct WriteReply {
       }
 
       this.essentialDataReady = true
-    }).onBackPressed(() => {
+    })
+    .onBackPressed(() => {
       this.popBack()
       return true
-    }).bindSheet($$this.sheetShow, this.SheetContent(), {
+    })
+    .bindSheet($$this.sheetShow, this.SheetContent(), {
       height: SheetSize.MEDIUM,
       detents: [SheetSize.MEDIUM, SheetSize.LARGE],
       dragBar: true,
