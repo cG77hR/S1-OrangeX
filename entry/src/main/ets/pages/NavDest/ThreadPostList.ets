@@ -12,6 +12,7 @@ import { common } from '@kit.AbilityKit'
 import { openUserSpace, UserSpaceParam } from './UserSpace'
 import { AniSpeed, HeavyClickEffect, SpringCurve } from '../../common/Animation'
 import { formatRelativeTime } from '../../common/TimeFormat'
+import { setLongScreenshotThreadInfo } from '../../common/LongScreenshotInfo'
 import { PageNameEnum } from '../PageNameEnum'
 import { BottomSafeArea } from '../../common/component/BottomSafeArea'
 import { AppThemeColor } from '../../common/theme/basic/basic'
@@ -127,7 +128,7 @@ function openImgViewerEventName(pageParam: ThreadPostParam) {
 }
 
 function attachmentImageUrl(attach: Attachment): string {
-  return attach.url.length > 0 ? attach.url + attach.attachment
+  return attach.url && attach.url.length > 0 ? attach.url + attach.attachment
     : URL.WEB_BASE + URL.ATTACHMENT_DOWNLOAD + attach.aidencode
 }
 
@@ -162,6 +163,22 @@ export struct ThreadPostList {
   @Provide contentVisible: boolean = true
   @StorageProp(SafeArea.bottom) bottomRectHeight: number = 0
   reloadCtrl: ReloadController = new ReloadController()
+  lastReadFloorOnEntry: number = 0
+  @State entryUnreadFloors: number = 0
+  @State summarizeDialogFloorNumber: string = ''
+  @State summarizeDialogUnreadCount: number = 0
+  summarizeDialogController: CustomDialogController = new CustomDialogController({
+    builder: AskAiDialog({
+      postTid: this.pageParam.tid,
+      postSubject: this.pageParam.subject || '',
+      postFloorNumber: this.summarizeDialogFloorNumber,
+      summarizeUnreadCount: this.summarizeDialogUnreadCount,
+      appTheme: this.appTheme,
+      fontSize: this.appState.fontSize
+    }),
+    autoCancel: true,
+    alignment: DialogAlignment.Center
+  })
 
   onPageParamUpdate() {
     if (this.pageParam.replies == undefined) {
@@ -183,6 +200,18 @@ export struct ThreadPostList {
       RecordThreadViewHistory(this.pageParam.tid, this.pageParam.subject, this.pageParam.jumpToPid || '0', Date.now(),
         this.pageParam.replies, this.currentPage)
       FlushThreadViewHistory(this.pageParam.tid)
+    }
+    this.updateEntryUnread()
+  }
+
+  updateEntryUnread(): void {
+    let unread = 0
+    if (this.lastReadFloorOnEntry > 0) {
+      const latest = parseInt(this.pageParam.replies ?? '0')
+      unread = latest > this.lastReadFloorOnEntry ? latest - this.lastReadFloorOnEntry : 0
+    }
+    if (this.entryUnreadFloors != unread) {
+      this.entryUnreadFloors = unread
     }
   }
 
@@ -372,7 +401,19 @@ export struct ThreadPostList {
                 }
                 openPageSearch(this.pathStack, param)
               }
-            }]
+            }, ...(this.entryUnreadFloors > 5 ? [{
+              value: `总结未读(${this.entryUnreadFloors})`,
+              action: () => {
+                const latestFloor = parseInt(this.pageParam.replies ?? '0')
+                if (latestFloor <= 0) {
+                  ShowToast({ message: '帖子尚未加载完成' })
+                  return
+                }
+                this.summarizeDialogFloorNumber = String(latestFloor)
+                this.summarizeDialogUnreadCount = this.entryUnreadFloors
+                this.summarizeDialogController.open()
+              }
+            }] as MenuElement[] : [] as MenuElement[])]
           }) {
             PageSlider({
               pageIndex: this.currentPage,
@@ -520,15 +561,20 @@ export struct ThreadPostList {
         this.expandRatingForLongScreenshot = conf.long_screenshot_expand_rating
       })
       const pageParam = context.pathInfo.param as ThreadPostParam
-      if (pageParam.jumpToPage == undefined && pageParam.jumpToPid == undefined && pageParam.authorid == undefined) {
+      this.lastReadFloorOnEntry = 0
+      if (pageParam.authorid === undefined) {
         const history = await QuerySingleViewHistory(pageParam.tid)
         if (history) {
-          pageParam.jumpToPage = history.page
-          pageParam.jumpToPid = String(history.pid)
-          pageParam.replies = String(history.reply)
+          this.lastReadFloorOnEntry = history.reply
+          if (pageParam.jumpToPage == undefined && pageParam.jumpToPid == undefined) {
+            pageParam.jumpToPage = history.page
+            pageParam.jumpToPid = String(history.pid)
+            pageParam.replies = String(history.reply)
+          }
         }
       }
       this.pageParam = pageParam
+      this.updateEntryUnread()
       Recommend.onThreadPostShown(this.pageParam.tid)
       if (this.pageParam.jumpToPid && this.pageParam.jumpToPid != '0') {
         this.jumpToPost = this.pageParam.jumpToPid
@@ -875,6 +921,11 @@ struct SinglePostPage {
       this.pageParam.typeid = v.Variables.thread.typeid
     }
     this.threadAuthorUid = v.Variables.thread.authorid
+    const threadDateline = parseInt(v.Variables.thread.dateline)
+    const threadReplies = parseInt(v.Variables.thread.replies)
+    setLongScreenshotThreadInfo(this.pageParam.tid,
+      !isNaN(threadDateline) && threadDateline > 0 ? threadDateline * 1000 : 0,
+      !isNaN(threadReplies) && threadReplies > 0 ? threadReplies : 0)
     const postRating = new Map<string, ThreadRatingInfo | undefined>()
     Object.keys(v.Variables.comments).forEach(pid => postRating.set(pid, undefined))
     this.postRatingInfo = postRating

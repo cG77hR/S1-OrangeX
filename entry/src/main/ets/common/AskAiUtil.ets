@@ -1,5 +1,5 @@
 import { AskAiTargetApp } from '../config/v1/default'
-import { markdownSerializer } from './ThreadPostContentSerializer'
+import { markdownSerializer, smilyBbCode } from './ThreadPostContentSerializer'
 import {
   GeneralNode,
   parseXML,
@@ -9,9 +9,8 @@ import {
 } from './component/ThreadPostContent'
 import { URL } from '../api/base'
 import request from '../api/request'
-import { ThreadDataApp } from '../api/model/app/thread'
-import { PostListV4 } from '../api/model/postList'
-import wrapper, { wrapperApp } from '../api/wrapper'
+import { PostListApp, ThreadDataApp } from '../api/model/app/thread'
+import { wrapperApp } from '../api/wrapper'
 
 const AI_APP_PACKAGES: string[] = []
 AI_APP_PACKAGES[AskAiTargetApp.Doubao] = 'com.larus.nova'
@@ -40,6 +39,45 @@ AI_APP_NAMES[AskAiTargetApp.Other] = '其它（分享提示词）'
 
 const SECTION_SEPARATOR = '\n\n---\n\n'
 const POST_PER_PAGE = 40
+const QUOTE_HEADER_DATE = '\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}'
+const QUOTE_LINK_PATTERN = new RegExp(
+  `^\\[([^\\]]*?发表于[^\\]]*${QUOTE_HEADER_DATE}[^\\]]*)\\]\\([^)\\s]*\\)$`)
+const QUOTE_PLAIN_PATTERN = new RegExp(
+  `^([^\\n]*?发表于[^\\n]*${QUOTE_HEADER_DATE}[^\\n]*)$`)
+const INLINE_IMAGE_PATTERN = /!\[[^\]]*\]\([^)\n]*\)/g
+
+function trimInlineImages(md: string): string {
+  return md.replace(INLINE_IMAGE_PATTERN, (match: string): string => {
+    const open = match.lastIndexOf('(')
+    const url = open >= 0 ? match.slice(open + 1, match.length - 1) : ''
+    return smilyBbCode(url)
+  })
+}
+
+// 问 AI 专用：把引用头部 [作者发表于时间](url) / 作者 发表于 时间，统一裁成 *作者发表于时间*。
+function trimQuoteHeaders(md: string): string {
+  const lines = md.split('\n')
+  let inQuote = false
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (line.startsWith('> ')) {
+      if (!inQuote) {
+        const inner = line.slice(2)
+        let trimmed = inner.replace(QUOTE_LINK_PATTERN, '*$1*')
+        if (trimmed == inner) {
+          trimmed = inner.replace(QUOTE_PLAIN_PATTERN, '*$1*')
+        }
+        if (trimmed != inner) {
+          lines[i] = '> ' + trimmed
+        }
+      }
+      inQuote = true
+    } else {
+      inQuote = false
+    }
+  }
+  return lines.join('\n')
+}
 
 export interface AskAiStats {
   floorCount: number
@@ -61,6 +99,13 @@ interface QuoteRedirectInfo {
 }
 
 interface FetchedPost {
+  nodes: UIRootNode[]
+  author: string
+  dateline: number
+  pid: string
+}
+
+export interface LatestPostInfo {
   nodes: UIRootNode[]
   author: string
   dateline: number
@@ -317,35 +362,39 @@ function formatSection(section: AskAiSection): string {
   return lines.join('\n')
 }
 
-async function fetchPostListPage(tid: string, page: number): Promise<PostListV4 | undefined> {
-  let cachedData: PostListV4 | undefined = undefined
+async function fetchPostPage(tid: string, page: number): Promise<PostListApp[] | undefined> {
+  let cachedList: PostListApp[] | undefined = undefined
   const cacheReady = new Promise<void>(resolve => {
-    new request<wrapper<PostListV4>>(URL.THREAD_POST_LIST_V4)
-      .param('tid', tid)
-      .param('page', page.toString())
-      .param('authorid', '')
+    new request<wrapperApp<ThreadDataApp>>(URL.THREAD_POST_APP, URL.APP_BASE)
+      .appToken()
       .cache((v): void => {
-        cachedData = v.Variables
+        cachedList = v.data.list
         resolve()
       }, false, true)
-      .get()
+      .post({
+        tid: tid,
+        pageNo: page,
+        uid: ''
+      })
       .catch(() => {
         resolve()
       })
   })
   await cacheReady
-  if (cachedData) {
-    return cachedData
+  if (cachedList) {
+    return cachedList
   }
   try {
-    const v = await new request<wrapper<PostListV4>>(URL.THREAD_POST_LIST_V4)
-      .param('tid', tid)
-      .param('page', page.toString())
-      .param('authorid', '')
+    const v = await new request<wrapperApp<ThreadDataApp>>(URL.THREAD_POST_APP, URL.APP_BASE)
+      .appToken()
       .cache((data): void => {
       })
-      .get()
-    return v.Variables
+      .post({
+        tid: tid,
+        pageNo: page,
+        uid: ''
+      })
+    return v.data.list
   } catch (e) {
   }
   return undefined
@@ -362,36 +411,69 @@ async function fetchPreviousFloors(tid: string, currentFloor: number, count: num
   const lastPage = Math.floor((end - 1) / POST_PER_PAGE) + 1
   const sections: AskAiSection[] = []
   for (let page = firstPage; page <= lastPage; page++) {
-    const data = await fetchPostListPage(tid, page)
-    if (!data) {
+    const list = await fetchPostPage(tid, page)
+    if (!list) {
       continue
     }
-    for (const p of data.postlist) {
-      const floor = parseInt(p.number || '')
-      if (isNaN(floor) || floor < start || floor > end) {
+    for (let i = 0; i < list.length; i++) {
+      const floor = (page - 1) * POST_PER_PAGE + i + 1
+      if (floor < start || floor > end) {
         continue
       }
-      if (p.pid == currentPid || includedPids.has(p.pid)) {
+      const p = list[i]
+      const pid = p.pid.toString()
+      if (pid == currentPid || includedPids.has(pid)) {
         continue
       }
       const parsed = parseXML([p])
       if (parsed.length == 0) {
         continue
       }
-      includedPids.add(p.pid)
+      includedPids.add(pid)
       const nodes = PostContentParser(parsed[0], []).node
       sections.push({
         author: p.author,
-        dateline: parseInt(p.dbdateline || p.dateline) || 0,
-        isMain: p.first == '1' || floor == 1,
+        dateline: p.dateline,
+        isMain: floor == 1,
         floor: floor,
-        pid: p.pid,
+        pid: pid,
         content: nodes.length > 0 ? markdownSerializer.convert(nodes) : ''
       })
     }
   }
   sections.sort((a, b) => a.floor - b.floor)
   return sections
+}
+
+export async function fetchLatestPost(tid: string, latestFloor: number): Promise<LatestPostInfo | undefined> {
+  const page = Math.ceil(latestFloor / POST_PER_PAGE)
+  try {
+    const v = await new request<wrapperApp<ThreadDataApp>>(URL.THREAD_POST_APP, URL.APP_BASE)
+      .appToken()
+      .post({
+        tid: tid,
+        pageNo: page,
+        uid: ''
+      })
+    const list = v.data.list
+    for (let i = list.length - 1; i >= 0; i--) {
+      const floor = (page - 1) * POST_PER_PAGE + i + 1
+      if (floor <= latestFloor) {
+        const parsed = parseXML([list[i]])
+        if (parsed.length == 0) {
+          return undefined
+        }
+        return {
+          nodes: PostContentParser(parsed[0], []).node,
+          author: list[i].author,
+          dateline: list[i].dateline,
+          pid: list[i].pid.toString()
+        }
+      }
+    }
+  } catch (e) {
+  }
+  return undefined
 }
 
 export async function buildAskAiMarkdown(nodes: UIRootNode[], author: string, dateline: number,
@@ -463,7 +545,7 @@ export async function buildAskAiMarkdown(nodes: UIRootNode[], author: string, da
     }
   }
 
-  const body = parts.join(SECTION_SEPARATOR)
+  const body = trimInlineImages(trimQuoteHeaders(parts.join(SECTION_SEPARATOR)))
   if (threadSubject.length > 0) {
     return `# ${threadSubject}\n\n` + body
   }
@@ -477,5 +559,5 @@ export function composeAskAiPayload(markdown: string, prompt: string): string {
   if (markdown.length == 0) {
     return prompt
   }
-  return markdown + SECTION_SEPARATOR + prompt
+  return markdown + SECTION_SEPARATOR + '以上是论坛讨论正文。需求：' + prompt
 }
