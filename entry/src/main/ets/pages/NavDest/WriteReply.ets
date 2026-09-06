@@ -134,6 +134,7 @@ export struct WriteReply {
   @StorageProp(SafeArea.bottom) bottomRectHeight: number = 0
   @StorageProp(SafeArea.keyboard) @Watch('updateKeyboardExpendHeight') keyboardHeight: number = 0
   @State keyboardExpendHeight: number = vp2px(350)
+  focusedEditorCount: number = 0
   @State showTools: boolean = false
   @StorageProp(PropKey.userId) @Watch('loadUser') uid?: string = undefined
   @State quote?: Quote = undefined
@@ -161,6 +162,21 @@ export struct WriteReply {
     }
   }
 
+  onEditorFocus() {
+    if (this.focusedEditorCount === 0) {
+      this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE)
+    }
+    this.focusedEditorCount++
+  }
+
+  onEditorBlur() {
+    this.focusedEditorCount--
+    if (this.focusedEditorCount <= 0) {
+      this.focusedEditorCount = 0
+      this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.OFFSET)
+    }
+  }
+
   popBack() {
     if (!this.popped) {
       this.pathStack.pop(this.popData, this.pageParam.defaultTransition)
@@ -173,6 +189,8 @@ export struct WriteReply {
   }
 
   aboutToDisappear(): void {
+    this.focusedEditorCount = 0
+    this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.OFFSET)
     if (!this.popData.replied) {
       if (!this.fieldToInput.equalsTo(this.initialFieldToInput)) {
         if (this.fieldToInput.equalsTo(new FieldToInput())) {
@@ -510,6 +528,8 @@ export struct WriteReply {
                     text: $$this.fieldToInput.subject,
                     placeholder: '填写标题'
                   }).maxLength(80).fontSize(FontSizeEnum[this.appState.fontSize].vp18)
+                    .onFocus(() => this.onEditorFocus())
+                    .onBlur(() => this.onEditorBlur())
                 }.margin({ bottom: 20 })
               } else {
                 this.loadingCard()
@@ -548,6 +568,8 @@ export struct WriteReply {
                   this.showTools = false
                 }
               })
+              .onFocus(() => this.onEditorFocus())
+              .onBlur(() => this.onEditorBlur())
               .onChange(() => {
                 if (this.caretRePos !== undefined) {
                   this.controller.caretPosition(this.caretRePos)
@@ -733,7 +755,7 @@ export struct WriteReply {
           .backgroundColor(this.appTheme.backgroundTertiary)
           .expandSafeArea([SafeAreaType.KEYBOARD, SafeAreaType.SYSTEM])
           .height(this.showTools ? px2vp(this.keyboardExpendHeight) :
-            this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : px2vp(this.keyboardHeight))
+            this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : 0)
           .clip(true)
           .animation(SpringCurve)
           .width('100%')
