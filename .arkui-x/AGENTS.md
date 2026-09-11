@@ -185,7 +185,7 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 
 ## 提交习惯
 
-- 如果有重大适配问题或改动，在 merge commit 的 message 里直接写明。
+- 如果有重大适配问题或改动，需要开发者决策的那种，才在 merge commit 的 message 里记录事项，否则保持默认提交信息。
 
 ## 快速自检清单（合并/新增功能后逐项过一遍）
 
