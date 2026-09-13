@@ -210,7 +210,7 @@ struct UserThreadPage {
                             ShowToast({
                               message: '解析帖子链接出错'
                             })
-                          }, item.subject, item.repliesCount)
+                          }, item.subject, item.repliesCount, undefined, false, '解析帖子链接出错')
                       })
                   })
                 }

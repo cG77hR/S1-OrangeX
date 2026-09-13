@@ -1,6 +1,6 @@
 import { DomainRegex, URL } from '../../api/base'
 import request, { RequestError } from '../../api/request'
-import { Attachment, PostListV4, SpecialPollAllowVote, SpecialPollResultVisible } from '../../api/model/postList'
+import { Attachment, Post, PostListV4, SpecialPollAllowVote, SpecialPollResultVisible } from '../../api/model/postList'
 import wrapper, { wrapperApp } from '../../api/wrapper'
 import { OuterScroller } from '../../common/component/OuterScroller'
 import { PullToRefreshStage } from '../../common/component/PullToRefresh'
@@ -14,7 +14,6 @@ import { AniSpeed, HeavyClickEffect, SpringCurve } from '../../common/Animation'
 import { formatRelativeTime } from '../../common/TimeFormat'
 import { setLongScreenshotThreadInfo } from '../../common/LongScreenshotInfo'
 import { PageNameEnum } from '../PageNameEnum'
-import { BottomSafeArea } from '../../common/component/BottomSafeArea'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { ImageViewer, ImageViewerParam } from '../../common/component/ImageViewer'
 import { openOrJumpTo } from '../SingletonPage'
@@ -27,7 +26,7 @@ import {
   RecordThreadViewHistory
 } from '../../common/dataStore/HistoryData'
 import { ArrayDataSource, ReloadController } from '../../common/BasicDataSource'
-import { CacheWaitHint, joinInFlight, PageLoadGuard } from '../../common/PageLoad'
+import { CacheWaitHint as CacheHintTimer, PageLoadGuard } from '../../common/PageLoad'
 import { generateS1WebPostLink, openInBrowser, openS1LinkLike } from '../../ArkUIX/Utils/WantUitl'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import Account from '../../api/model/account'
@@ -72,6 +71,9 @@ import { ThreadPostAttachmentItem } from '../../common/component/ThreadPostAttac
 import { UserCreditText } from '../../common/component/UserCredit'
 import { openFreeCopy } from './FreeCopy'
 import { Recommend } from '../../common/recommend/RecommendManager'
+import { ObsoleteDomain } from '../../api/ObsoleteDomain'
+import { isS1RedirectPostLink, openThreadRedirect, parseS1RedirectPostPid, ThreadRedirectParam } from './ThreadRedirect'
+import { queryPostLocation, reportPostLocation } from '../../common/dataStore/PostLocationData'
 
 export interface PostViewModel {
   node: UIRootNode[]
@@ -146,6 +148,7 @@ export struct ThreadPostList {
   @State imgViewerShow: boolean = false
   @Provide('visiblePage') currentPage: number = 1
   @Provide totalPage: number = 1
+  @Provide @Watch('emptyPagesChanged') emptyPages: Set<number> = new Set
   @State jumpToPage: number = -1
   jumpToPageDone: boolean = false
   @Provide jumpToPost?: string = undefined
@@ -186,8 +189,7 @@ export struct ThreadPostList {
       return // 页面参数只有tid时的初始化情形，等待子页面回传正确的回帖数量
     }
     // 此时认为真正打开了帖子
-    this.totalPage = parseInt(this.pageParam?.replies || '0') > 1 ?
-      Math.ceil(parseInt(this.pageParam?.replies || '0') / POST_PER_PAGE) : 1
+    this.recomputeTotalPage()
     if (this.pageParam.jumpToPage && !this.jumpToPageDone && this.pageParam.jumpToPage <= this.totalPage) {
       let jumpToPage = this.pageParam.jumpToPage!
       if (jumpToPage < 0) {
@@ -203,6 +205,24 @@ export struct ThreadPostList {
       FlushThreadViewHistory(this.pageParam.tid)
     }
     this.updateEntryUnread()
+  }
+
+  recomputeTotalPage() {
+    const replies = parseInt(this.pageParam?.replies || '0')
+    let lastPage = replies > 1 ? Math.ceil(replies / POST_PER_PAGE) : 1
+    this.emptyPages.forEach((page: number) => {
+      if (page > 1 && page - 1 < lastPage) {
+        lastPage = page - 1
+      }
+    })
+    this.totalPage = lastPage
+  }
+
+  emptyPagesChanged() {
+    this.recomputeTotalPage()
+    if (this.currentPage > this.totalPage) {
+      this.jumpToPage = this.totalPage
+    }
   }
 
   updateEntryUnread(): void {
@@ -672,7 +692,7 @@ struct SinglePostPage {
   @Consume @Watch('requestPostData') dataControlCounter: number
   context = getContext(this) as common.UIAbilityContext
   @Consume pageParam: ThreadPostParam
-  @StorageProp(SafeArea.bottom) bottomRectHeight: number = 0
+  @StorageProp(SafeArea.bottom) @Watch('bottomRectHeightChanged') bottomRectHeight: number = 0
   @StorageProp(BLOCK_USER_LIST_STATE) blockList: Set<string> = new Set
   pageToLoad: number = 1
   imgUrl: string[] = []
@@ -692,6 +712,7 @@ struct SinglePostPage {
   }
 
   loadingIcon?: SwipePageLoadingIcon
+  @Consume emptyPages: Set<number>
   @State threadAuthorUid: string = ''
   @StorageProp(PropKey.userId) currentUserUid?: string = undefined
   @Consume appTheme: AppThemeColor
@@ -727,9 +748,11 @@ struct SinglePostPage {
   @State nowDate: Date = new Date()
   @State showBottomLoading: number = 0
   @State showCacheWaitHint: boolean = false
-  waitHint: CacheWaitHint = new CacheWaitHint(
+  @State bottomSafeHeight: number = 0
+  cacheHintTimer: CacheHintTimer = new CacheHintTimer(
     (waiting: boolean): void => {
       this.showCacheWaitHint = waiting
+      this.updateBottomSafeHeight(true)
     })
   @State pollList: PollOptionVM[] = []
   @State pollInfo: PollInfoVM = {
@@ -823,6 +846,33 @@ struct SinglePostPage {
       })
       this.pageScrollOffset.delete(this.pageToLoad)
     }
+  }
+
+  bottomSafeTargetHeight(): number {
+    const safeHeight = px2vp(this.bottomRectHeight)
+    const cacheHintRowHeight = 8 + Math.ceil(FontSizeEnum[this.appState.fontSize].vp12 * 1.3)
+    return this.showCacheWaitHint && this.postDataSource.totalCount() > 0 ?
+      Math.max(safeHeight, cacheHintRowHeight) : safeHeight
+  }
+
+  updateBottomSafeHeight(animated: boolean): number {
+    const target = this.bottomSafeTargetHeight()
+    const delta = this.bottomSafeHeight - target
+    if (delta == 0) {
+      return 0
+    }
+    if (animated) {
+      this.getUIContext().animateTo({ duration: AniSpeed.ms200, curve: Curve.EaseInOut }, () => {
+        this.bottomSafeHeight = target
+      })
+    } else {
+      this.bottomSafeHeight = target
+    }
+    return delta
+  }
+
+  bottomRectHeightChanged() {
+    this.updateBottomSafeHeight(false)
   }
 
   syncTagMap(posts: PostViewModel[]) {
@@ -966,6 +1016,11 @@ struct SinglePostPage {
     let postArray: PostViewModel[] = []
     const searchItems: PostSearchItem[] = []
     let rawPostList = v.data.list
+    if (rawPostList.length == 0 && this.pageToLoad > 1) {
+      this.loadingFinish()
+      this.emptyPages.add(this.pageToLoad)
+      return
+    }
     this.imgUrl = []
     this.postStringify.clear()
     this.mdRendered.clear()
@@ -999,8 +1054,13 @@ struct SinglePostPage {
       postArray.push(vm)
     })
     this.refreshInlineAttachmentAid()
+    this.emptyPages.delete(this.pageToLoad)
 
     this.searchItemsByPage.set(this.pageToLoad, searchItems)
+    if (this.pageParam.authorid === undefined) {
+      // 只看某作者的视图分页与完整帖分页不一致，不上报其位置
+      reportPostLocation(searchItems.map((item: PostSearchItem) => item.pid), this.pageParam.tid, this.pageToLoad)
+    }
 
     this.updatePostDatetime()
     for (let i = 0; i < rawPostList.length; i++) {
@@ -1033,13 +1093,18 @@ struct SinglePostPage {
       this.postDataSource.reload(postArray)
     }
     this.loadingFinish()
-    this.loadGuard.markLoading(this.generateDataFetchKey())
     if (lastUpdatePostCount > 0 && postArray.length > lastUpdatePostCount) {
+      this.showCacheWaitHint = false
+      this.cacheHintTimer.end()
+      const barDelta = this.updateBottomSafeHeight(false)
+      const loadingDelta = this.showBottomLoading * BOTTOM_LOADING_AREA
       setTimeout(() => {
-        this.scroller.scrollBy(0, this.showBottomLoading * BOTTOM_LOADING_AREA)
+        this.scroller.scrollBy(0, loadingDelta + barDelta)
         this.showBottomLoading = 0
       }, 20)
     } else {
+      // 没有新内容，只需让提示条和底部 loading 归位，高度用动画过渡，不涉及滚动补偿
+      this.cacheHintTimer.end()
       setTimeout(() => {
         animateTo(SpringCurve, () => {
           this.showBottomLoading = 0
@@ -1049,13 +1114,13 @@ struct SinglePostPage {
   }
 
   requestPostData() {
-    if (!this.loadGuard.shouldLoad(this.generateDataFetchKey())) {
+    const session = this.loadGuard.begin(this.generateDataFetchKey())
+    if (session === undefined) {
       return
     }
-    this.loadGuard.markLoading(this.generateDataFetchKey())
     this.loadingBegin()
 
-    joinInFlight(`threadPosts,${this.pageParam.tid},${this.pageToLoad},${this.pageParam.authorid || ''}`,
+    session.join(`threadPosts,${this.pageParam.tid},${this.pageToLoad},${this.pageParam.authorid || ''}`,
       (): Promise<wrapper<PostListV4>> =>
       new request<wrapper<PostListV4>>(URL.THREAD_POST_LIST_V4)
         .param('tid', this.pageParam.tid)
@@ -1065,20 +1130,19 @@ struct SinglePostPage {
         .get())
       .then((v): void => this.processPostListV4(v))
       .catch((res: RequestError) => {
-        this.loadGuard.markFailed()
         if (res.type == 'Response') {
           if (res.data.statusCode == 404) {
             this.threadNotExist = true
           }
         }
       })
-    joinInFlight(`threadApp,${this.pageParam.tid},${this.pageToLoad},${this.pageParam.authorid || ''}`,
+    session.join(`threadApp,${this.pageParam.tid},${this.pageToLoad},${this.pageParam.authorid || ''}`,
       (): Promise<wrapperApp<ThreadDataApp>> =>
-        new request<wrapperApp<ThreadDataApp>>(URL.THREAD_POST_APP, URL.APP_BASE)
+      new request<wrapperApp<ThreadDataApp>>(URL.THREAD_POST_APP, URL.APP_BASE)
         .appToken()
         .cache((v): void => {
-          this.waitHint.begin()
           this.processThreadDataApp(v)
+          this.cacheHintTimer.begin()
         }, this.postDataSource.totalCount() > 0)
         .post({
           tid: this.pageParam.tid,
@@ -1087,10 +1151,9 @@ struct SinglePostPage {
         }))
       .then((v): void => this.processThreadDataApp(v))
       .catch(() => {
-        this.loadGuard.markFailed()
         this.loadingFinish()
       })
-      .finally((): void => this.waitHint.end())
+      .finally((): void => this.cacheHintTimer.end())
   }
 
   postDatetimeUpdateTimer?: number
@@ -1100,13 +1163,14 @@ struct SinglePostPage {
   }
 
   aboutToAppear(): void {
+    this.bottomSafeHeight = this.bottomSafeTargetHeight()
     this.requestPostData()
     this.postDatetimeUpdateTimer = setInterval((): void => this.updatePostDatetime(), 60 * 1000)
   }
 
   aboutToDisappear(): void {
     clearInterval(this.postDatetimeUpdateTimer)
-    this.waitHint.destroy()
+    this.cacheHintTimer.end()
     const offset = this.scroller.currentOffset()
     if (offset) {
       this.pageScrollOffset.set(this.pageToLoad, offset.yOffset)
@@ -1343,8 +1407,10 @@ struct SinglePostPage {
         fontSizeOverride: this.appState.fontSizeOverride,
         copyOption: this.appState ? CopyOptions.LocalDevice : CopyOptions.None,
         onLinkClick: (href: string): void => {
-          openS1LinkLike(href, this.pathStack, this.context, this.pageParam.subject,
-            this.pageParam.replies, true, this.pageParam.tid)
+          if (!tryOpenLoadedPostLink(href, this.pageParam, this.pathStack)) {
+            openS1LinkLike(href, this.pathStack, this.context, this.pageParam.subject,
+              this.pageParam.replies, true, this.pageParam.tid)
+          }
         },
         onImgClick: (url: string, index: number): void => {
           this.openImageViewer(this.imgUrl, index)
@@ -1629,7 +1695,7 @@ struct SinglePostPage {
           }
         }, (post: PostViewModel, index: number) => this.postStringify.get(post.pid) + index.toString())
         ListItem() {
-          BottomSafeArea() {
+          Stack({ alignContent: Alignment.Top }) {
             if (this.showCacheWaitHint && this.postDataSource.totalCount() > 0) {
               Row() {
                 Text('仍在等待数据')
@@ -1651,6 +1717,8 @@ struct SinglePostPage {
               .transition(TransitionEffect.OPACITY.animation({ duration: 100 }))
             }
           }
+          .width('100%')
+          .height(this.bottomSafeHeight)
         }
 
         if (this.longScreenshotMode) {
@@ -1784,53 +1852,61 @@ export function openThreadPost(param: ThreadPostParam, pathStack: NavPathStack,
   })
 }
 
-async function resolveS1ThreadRedirectLink(href: string | undefined,
-  succeed: (tid: string, page: number, pid?: string, authorId?: string) => void, failed: () => void) {
-  if (href && DomainRegex.test(href)) {
-    if (href.includes(URL.REDIRECT_TO_POST)) {
-      if (href.includes(URL.DOMAIN_APP)) {
-        href = href.replace(URL.DOMAIN_APP, URL.DOMAIN_WEB)
-      }
-      new request<string>(href, '')
-        .redirectLocation()
-        .get()
-        .then(location => {
-          const regex = /tid=(\d+)&page=(\d+)#pid(\d+)/
-          const match = location.match(regex)
-          if (match && match.length === 4) {
-            succeed(match[1], parseInt(match[2]), match[3])
-            return
-          }
-        })
-        .catch(() => {
-          failed()
-        })
-    } else {
-      const weblink = resolveS1WebLink(href)
-      if (weblink) {
-        succeed(weblink.tid, weblink.page, undefined, weblink.authorId)
-      } else {
-        failed()
-      }
-    }
-  } else {
-    failed()
+function tryOpenLoadedPostLink(href: string, pageParam: ThreadPostParam, pathStack: NavPathStack): boolean {
+  const pid = parseS1RedirectPostPid(ObsoleteDomain.replace(href))
+  if (!pid) {
+    return false
   }
+  const location = queryPostLocation(pid)
+  if (!location) {
+    return false
+  }
+  const sameThread = location.tid == pageParam.tid
+  const param: ThreadPostParam = {
+    tid: location.tid,
+    fid: sameThread ? pageParam.fid : undefined,
+    typeid: sameThread ? pageParam.typeid : undefined,
+    subject: sameThread ? pageParam.subject : undefined,
+    replies: sameThread ? pageParam.replies : undefined,
+    jumpToPage: location.page,
+    jumpToPid: pid,
+    jumpToPidWithHighlight: true
+  }
+  openThreadPost(param, pathStack)
+  return true
 }
 
 export function openThreadPostByLink(href: string,
-  pathStack: NavPathStack, onFailed: () => void, subject = '', replies = '1', sourceTid?: string) {
-  resolveS1ThreadRedirectLink(href, (tid: string, page: number, pid?: string, authorId?: string) => {
-    const sameThread = sourceTid == undefined || sourceTid == tid
-    const param: ThreadPostParam = {
-      tid: tid,
-      jumpToPid: pid,
-      jumpToPage: page,
-      subject: sameThread ? subject : undefined,
-      replies: sameThread ? replies : undefined,
-      jumpToPidWithHighlight: true,
-      authorid: authorId
+  pathStack: NavPathStack, onFailed: () => void, subject = '', replies = '1', sourceTid?: string,
+  fallbackToBrowser = false, failedMessage = '') {
+  href = ObsoleteDomain.replace(href)
+  if (isS1RedirectPostLink(href)) {
+    const param: ThreadRedirectParam = {
+      href: href,
+      subject: subject,
+      replies: replies,
+      sourceTid: sourceTid,
+      fallbackToBrowser: fallbackToBrowser,
+      failedMessage: failedMessage
     }
-    openThreadPost(param, pathStack)
-  }, onFailed)
+    openThreadRedirect(pathStack, param)
+    return
+  }
+  if (DomainRegex.test(href)) {
+    const weblink = resolveS1WebLink(href)
+    if (weblink) {
+      const sameThread = sourceTid == undefined || sourceTid == weblink.tid
+      const param: ThreadPostParam = {
+        tid: weblink.tid,
+        jumpToPage: weblink.page,
+        subject: sameThread ? subject : undefined,
+        replies: sameThread ? replies : undefined,
+        jumpToPidWithHighlight: true,
+        authorid: weblink.authorId
+      }
+      openThreadPost(param, pathStack)
+      return
+    }
+  }
+  onFailed()
 }

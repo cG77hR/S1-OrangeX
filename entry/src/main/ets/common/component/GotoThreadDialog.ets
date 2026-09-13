@@ -38,7 +38,7 @@ export struct GotoThreadDialog {
                   ShowToast({
                     message: '解析帖子链接出错'
                   })
-                })
+                }, '', '1', undefined, false, '解析帖子链接出错')
               this.controller.close()
             }
           })
