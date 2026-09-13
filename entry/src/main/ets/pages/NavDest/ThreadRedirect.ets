@@ -4,12 +4,14 @@ import { common } from '@kit.AbilityKit'
 import { openOrJumpTo } from '../SingletonPage'
 import { PageNameEnum } from '../PageNameEnum'
 import { TitleBar } from '../../common/component/TitleBar'
+import { LoadingIcon } from '../../common/component/LoadingIcon'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
 import { openThreadPost, ThreadPostParam } from './ThreadPostList'
 import { openInBrowser } from '../../ArkUIX/Utils/WantUitl'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
+import { queryPostLocation } from '../../common/dataStore/PostLocationData'
 
 const REDIRECT_LOCATION_REGEX = /tid=(\d+)&page=(\d+)#pid(\d+)/
 
@@ -111,10 +113,7 @@ export struct ThreadRedirectPage {
           useRightMenu: false
         })
         Column({ space: 16 }) {
-          LoadingProgress()
-            .width(64)
-            .height(64)
-            .color($r('sys.color.ohos_id_color_emphasize'))
+          LoadingIcon({ iconSize: 64 })
           Text('正在获取目标楼层位置，请稍候')
             .fontSize(FontSizeEnum[this.appState.fontSize].vp15)
             .fontColor(this.appTheme.fontSecondary)
@@ -147,5 +146,21 @@ export function RegisterBuilder() {
 }
 
 export function openThreadRedirect(pathStack: NavPathStack, param: ThreadRedirectParam) {
+  // 已知落点的重定向链接查表直开，省去网络解析；未命中再走重定向页在线解析
+  const pid = parseS1RedirectPostPid(param.href)
+  const location = pid != undefined ? queryPostLocation(pid) : undefined
+  if (location) {
+    const sameThread = param.sourceTid == undefined || param.sourceTid == location.tid
+    const postParam: ThreadPostParam = {
+      tid: location.tid,
+      jumpToPid: pid,
+      jumpToPage: location.page,
+      subject: sameThread ? param.subject : undefined,
+      replies: sameThread ? param.replies : undefined,
+      jumpToPidWithHighlight: true
+    }
+    openThreadPost(postParam, pathStack)
+    return
+  }
   openOrJumpTo(pathStack, PageNameEnum.ThreadRedirect, param)
 }

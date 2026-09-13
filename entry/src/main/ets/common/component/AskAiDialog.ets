@@ -36,15 +36,14 @@ const DEFAULT_PREVIOUS_COUNT = 5
 const MAX_PREVIOUS_COUNT = 400
 const STATS_DEBOUNCE_MS = 300
 
-@CustomDialog
-export struct AskAiDialog {
-  controller: CustomDialogController
+@Component
+export struct AskAiDialogContent {
   context = getContext(this) as common.UIAbilityContext
   @Prop postNodes: UIRootNode[] = []
   @Prop postAuthor: string = ''
   @Prop postDateline: number = 0
   @Prop postTid: string = ''
-  @Prop postPid: string = ''
+  @Prop @Watch('refreshStatsForPost') postPid: string = ''
   @Prop postSubject: string = ''
   @Prop postFloorNumber: string = ''
   @Prop summarizeUnreadCount: number = 0
@@ -67,6 +66,7 @@ export struct AskAiDialog {
   statsDebounceTimer: number = -1
   anchorPost?: LatestPostInfo = undefined
   anchorFetched: boolean = false
+  close: () => void = () => {}
 
   aboutToAppear(): void {
     if (this.summarizeUnreadCount > 0) {
@@ -92,6 +92,11 @@ export struct AskAiDialog {
       clearTimeout(this.statsDebounceTimer)
       this.statsDebounceTimer = -1
     }
+  }
+
+  refreshStatsForPost(): void {
+    // 内容实例可能被复用（如跟手弹窗），打开目标变化时需重新统计
+    this.updateStats()
   }
 
   getCurrentFloor(): number {
@@ -259,14 +264,14 @@ export struct AskAiDialog {
     if (this.selectedApp == AskAiTargetApp.Other) {
       ShareText(payload, this.context)
       this.sending = false
-      this.controller.close()
+      this.close()
       return
     }
     const packageName = getAiAppPackageName(this.selectedApp)
     const success = await PlatformBridge.shareTextToPackage(payload, packageName)
     this.sending = false
     if (success) {
-      this.controller.close()
+      this.close()
     } else {
       ShowToast({ message: '可能未安装该应用' })
     }
@@ -403,5 +408,36 @@ export struct AskAiDialog {
     }
     .padding(20)
     .borderRadius(16)
+  }
+}
+
+@CustomDialog
+export struct AskAiDialog {
+  controller: CustomDialogController
+  @Prop postNodes: UIRootNode[] = []
+  @Prop postAuthor: string = ''
+  @Prop postDateline: number = 0
+  @Prop postTid: string = ''
+  @Prop postPid: string = ''
+  @Prop postSubject: string = ''
+  @Prop postFloorNumber: string = ''
+  @Prop summarizeUnreadCount: number = 0
+  @Prop appTheme: AppThemeColor = new ThemeColorLight()
+  @Prop fontSize: number = 0
+
+  build() {
+    AskAiDialogContent({
+      postNodes: this.postNodes,
+      postAuthor: this.postAuthor,
+      postDateline: this.postDateline,
+      postTid: this.postTid,
+      postPid: this.postPid,
+      postSubject: this.postSubject,
+      postFloorNumber: this.postFloorNumber,
+      summarizeUnreadCount: this.summarizeUnreadCount,
+      appTheme: this.appTheme,
+      fontSize: this.fontSize,
+      close: (): void => this.controller.close()
+    })
   }
 }

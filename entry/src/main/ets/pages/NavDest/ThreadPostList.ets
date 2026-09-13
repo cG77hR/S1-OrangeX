@@ -5,6 +5,7 @@ import wrapper, { wrapperApp } from '../../api/wrapper'
 import { OuterScroller } from '../../common/component/OuterScroller'
 import { PullToRefreshStage } from '../../common/component/PullToRefresh'
 import { TitleBar } from '../../common/component/TitleBar'
+import { LoadingIcon } from '../../common/component/LoadingIcon'
 import { unescapeAll } from '../../common/XmlParser'
 import { RectSize, ImageContainer } from '../../common/component/ImageContainer'
 import { Avatar } from '../../common/component/Avatar'
@@ -60,10 +61,10 @@ import { LengthUnit } from '@kit.ArkUI'
 import { PropKey, SafeArea } from '../../common/Constants'
 import { ShowToast } from '../../ArkUIX/Utils/ShowToast'
 import { openReportPost } from './ReportPost'
-import { AskAiDialog } from '../../common/component/AskAiDialog'
+import { AskAiDialog, AskAiDialogContent } from '../../common/component/AskAiDialog'
 import { plainTextSerializer, tryParseMarkdown } from '../../common/ThreadPostContentSerializer'
 import { openPageSearch, PageSearchParam, PostSearchItem } from './ThreadPostSearch'
-import { UserTagDialog } from '../../common/component/UserTagDialog'
+import { UserTagDialog, UserTagDialogContent } from '../../common/component/UserTagDialog'
 import { getUserTagsCopy } from '../../common/dataStore/UserTag'
 import { LongScreenshotPageParam, openLongScreenshot } from './LongScreenshot'
 import { deviceInfo } from '@kit.BasicServicesKit';
@@ -72,8 +73,9 @@ import { UserCreditText } from '../../common/component/UserCredit'
 import { openFreeCopy } from './FreeCopy'
 import { Recommend } from '../../common/recommend/RecommendManager'
 import { ObsoleteDomain } from '../../api/ObsoleteDomain'
-import { isS1RedirectPostLink, openThreadRedirect, parseS1RedirectPostPid, ThreadRedirectParam } from './ThreadRedirect'
-import { queryPostLocation, reportPostLocation } from '../../common/dataStore/PostLocationData'
+import { isS1RedirectPostLink, openThreadRedirect, ThreadRedirectParam } from './ThreadRedirect'
+import { reportPostLocation } from '../../common/dataStore/PostLocationData'
+import { followHandDialogActive } from '../../common/FollowHandDialogHelper'
 
 export interface PostViewModel {
   node: UIRootNode[]
@@ -770,6 +772,7 @@ struct SinglePostPage {
   pullUpStartOffset: number = 0
   pullUpLoadingTs: number = 0
   @State tagDialogPost: PostViewModel | undefined = undefined
+  @State userTagPopupUid: string = ''
   @State tagMap: Map<string, string[]> = new Map
   userTagDialogController: CustomDialogController = new CustomDialogController({
     builder: UserTagDialog({
@@ -787,6 +790,7 @@ struct SinglePostPage {
   })
   @State askAiDialogPost: PostViewModel | undefined = undefined
   @State askAiDialogFloorNumber: string = ''
+  @State askAiPopupPid: string = ''
   askAiDialogController: CustomDialogController = new CustomDialogController({
     builder: AskAiDialog({
       postNodes: this.askAiDialogPost ? this.askAiDialogPost.node : [],
@@ -802,6 +806,45 @@ struct SinglePostPage {
     autoCancel: true,
     alignment: DialogAlignment.Center
   })
+
+  @Builder
+  userTagPopupContent() {
+    Column() {
+      UserTagDialogContent({
+        uid: this.tagDialogPost ? this.tagDialogPost.uid : '',
+        username: this.tagDialogPost ? this.tagDialogPost.username : '',
+        userCredit: this.tagDialogPost ? this.tagDialogPost.userCredit : 0,
+        appTheme: this.appTheme,
+        fontSize: this.appState.fontSize,
+        onTagChanged: (uid: string) => {
+          this.tagMap.set(uid, getUserTagsCopy(uid))
+        },
+        close: () => {
+          this.userTagPopupUid = ''
+        }
+      })
+    }.width(320)
+  }
+
+  @Builder
+  askAiPopupContent() {
+    Column() {
+      AskAiDialogContent({
+        postNodes: this.askAiDialogPost ? this.askAiDialogPost.node : [],
+        postAuthor: this.askAiDialogPost ? this.askAiDialogPost.username : '',
+        postDateline: this.askAiDialogPost ? Math.floor(this.askAiDialogPost.timestamp.getTime() / 1000) : 0,
+        postTid: this.pageParam.tid,
+        postPid: this.askAiDialogPost ? this.askAiDialogPost.pid : '',
+        postSubject: this.pageParam.subject || '',
+        postFloorNumber: this.askAiDialogFloorNumber,
+        appTheme: this.appTheme,
+        fontSize: this.appState.fontSize,
+        close: () => {
+          this.askAiPopupPid = ''
+        }
+      })
+    }.width(360)
+  }
 
   generateDataFetchKey() {
     return `${this.pageToLoad},${this.dataControlCounter}`
@@ -1208,7 +1251,11 @@ struct SinglePostPage {
         content: '编辑标签'
       }).onClick(() => {
         this.tagDialogPost = post
-        this.userTagDialogController.open()
+        if (followHandDialogActive(this.appState)) {
+          this.userTagPopupUid = post.uid
+        } else {
+          this.userTagDialogController.open()
+        }
       })
     }
   }
@@ -1251,6 +1298,20 @@ struct SinglePostPage {
       .textAlign(TextAlign.End)
       .clickEffect(HeavyClickEffect)
       .bindMenu(param.menu)
+      .bindPopup(this.askAiPopupPid == param.pid, {
+        builder: (): void => {
+          this.askAiPopupContent()
+        },
+        placement: Placement.Bottom,
+        enableArrow: false,
+        radius: 16,
+        keyboardAvoidMode: KeyboardAvoidMode.DEFAULT,
+        onStateChange: (e) => {
+          if (!e.isVisible) {
+            this.askAiPopupPid = ''
+          }
+        }
+      })
     }
   }
 
@@ -1327,7 +1388,11 @@ struct SinglePostPage {
         this.askAiDialogPost = post
         this.askAiDialogFloorNumber = this.getFloorNumber(compIndex) ||
           String((this.pageToLoad - 1) * POST_PER_PAGE + compIndex + 1)
-        this.askAiDialogController.open()
+        if (followHandDialogActive(this.appState)) {
+          this.askAiPopupPid = post.pid
+        } else {
+          this.askAiDialogController.open()
+        }
       }
     })
     menu.push({
@@ -1407,10 +1472,8 @@ struct SinglePostPage {
         fontSizeOverride: this.appState.fontSizeOverride,
         copyOption: this.appState ? CopyOptions.LocalDevice : CopyOptions.None,
         onLinkClick: (href: string): void => {
-          if (!tryOpenLoadedPostLink(href, this.pageParam, this.pathStack)) {
-            openS1LinkLike(href, this.pathStack, this.context, this.pageParam.subject,
-              this.pageParam.replies, true, this.pageParam.tid)
-          }
+          openS1LinkLike(href, this.pathStack, this.context, this.pageParam.subject,
+            this.pageParam.replies, true, this.pageParam.tid)
         },
         onImgClick: (url: string, index: number): void => {
           this.openImageViewer(this.imgUrl, index)
@@ -1475,6 +1538,20 @@ struct SinglePostPage {
           }).bindContextMenu(this.avatarLongPressMenu(post), ResponseType.LongPress)
             .draggable(false)
             .clickEffect(HeavyClickEffect)
+            .bindPopup(this.userTagPopupUid == post.uid, {
+              builder: (): void => {
+                this.userTagPopupContent()
+              },
+              placement: Placement.Bottom,
+              enableArrow: false,
+              radius: 16,
+              keyboardAvoidMode: KeyboardAvoidMode.DEFAULT,
+              onStateChange: (e) => {
+                if (!e.isVisible) {
+                  this.userTagPopupUid = ''
+                }
+              }
+            })
           Column() {
             Row({ space: 12 }) {
               Text(post.username)
@@ -1819,10 +1896,7 @@ struct SinglePostPage {
       }
       if (this.showBottomLoading != 0) {
         Row() {
-          LoadingProgress()
-            .width(64)
-            .height(64)
-            .color($r('sys.color.ohos_id_color_emphasize'))
+          LoadingIcon({ iconSize: 64 })
         }
         .alignItems(VerticalAlign.Top)
         .justifyContent(FlexAlign.Center)
@@ -1850,30 +1924,6 @@ export function openThreadPost(param: ThreadPostParam, pathStack: NavPathStack,
       return genThreadPostViewKey(u as ThreadPostParam) == genThreadPostViewKey(param)
     }
   })
-}
-
-function tryOpenLoadedPostLink(href: string, pageParam: ThreadPostParam, pathStack: NavPathStack): boolean {
-  const pid = parseS1RedirectPostPid(ObsoleteDomain.replace(href))
-  if (!pid) {
-    return false
-  }
-  const location = queryPostLocation(pid)
-  if (!location) {
-    return false
-  }
-  const sameThread = location.tid == pageParam.tid
-  const param: ThreadPostParam = {
-    tid: location.tid,
-    fid: sameThread ? pageParam.fid : undefined,
-    typeid: sameThread ? pageParam.typeid : undefined,
-    subject: sameThread ? pageParam.subject : undefined,
-    replies: sameThread ? pageParam.replies : undefined,
-    jumpToPage: location.page,
-    jumpToPid: pid,
-    jumpToPidWithHighlight: true
-  }
-  openThreadPost(param, pathStack)
-  return true
 }
 
 export function openThreadPostByLink(href: string,
