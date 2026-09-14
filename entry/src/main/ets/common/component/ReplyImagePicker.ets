@@ -20,7 +20,7 @@ import { ShowToast } from '../../ArkUIX/Utils/ShowToast';
 import { PhotoViewPicker } from '../../ArkUIX/Utils/PhotoViewPicker';
 import { MultipartForm } from '../../ArkUIX/Rcp/Rcp';
 import { TabBarSelector } from './TabBarSelector';
-import { ImageViewer, ImageViewerParam } from './ImageViewer';
+import { ImageViewer, ImageViewerParam, requestImageViewerExit } from './ImageViewer';
 
 const IMG_THUMBNAIL_HEIGHT = 150
 
@@ -361,9 +361,11 @@ export struct ReplyImagePicker {
     .bindContentCover($$this.imgViewerShow, this.ImageViewerBuilder, {
       modalTransition: ModalTransition.NONE,
       onWillDismiss: (() => {
-        this.getUIContext().animateTo({ duration: AniSpeed.ms300 }, () => {
-          this.imgViewerShow = false
-        })
+        if (!requestImageViewerExit()) {
+          this.getUIContext().animateTo({ duration: AniSpeed.ms300 }, () => {
+            this.imgViewerShow = false
+          })
+        }
       }),
     })
   }
