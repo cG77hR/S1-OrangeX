@@ -188,12 +188,12 @@ struct NavigationPage {
       })
     })
     this.context.eventHub.on(Event.WantWithUri, (uri: string) => {
-      openS1LinkLike(uri, this.pathStack, this.context, '', '1', false)
+      openS1LinkLike(uri, this.pathStack, this.context, '', undefined, false)
     })
     if (!this.openS1LikeBridgeRegistered && PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
       this.openS1LikeBridgeRegistered = true
       PlatformBridge.onOpenS1Like((href: string) => {
-        openS1LinkLike(href, this.pathStack, this.context, '', '1', false)
+        openS1LinkLike(href, this.pathStack, this.context, '', undefined, false)
         return 0
       })
     }

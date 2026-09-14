@@ -317,6 +317,7 @@ export struct PmDetail {
     })
     .bindContentCover($$this.imgViewerShow, this.ImageViewerBuilder, {
       modalTransition: ModalTransition.NONE,
+      transition: TransitionEffect.IDENTITY,
       onWillDismiss: (() => {
         if (!requestImageViewerExit()) {
           this.getUIContext().animateTo(SpringCurve, () => {

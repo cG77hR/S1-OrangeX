@@ -360,6 +360,7 @@ export struct ReplyImagePicker {
     .edgeEffect(EdgeEffect.Spring)
     .bindContentCover($$this.imgViewerShow, this.ImageViewerBuilder, {
       modalTransition: ModalTransition.NONE,
+      transition: TransitionEffect.IDENTITY,
       onWillDismiss: (() => {
         if (!requestImageViewerExit()) {
           this.getUIContext().animateTo({ duration: AniSpeed.ms300 }, () => {

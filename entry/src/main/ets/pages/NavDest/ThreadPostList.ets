@@ -122,7 +122,7 @@ interface LongScreenshotOptionButtonParam {
 
 const PostContentVerticalPadding = 12
 const PostContentHorizontalPadding = 16
-const POST_PER_PAGE = 40
+export const POST_PER_PAGE = 40
 
 function genThreadPostViewKey(pageParam: ThreadPostParam) {
   return `${pageParam.tid},${pageParam.jumpToPid},${pageParam.authorid}`
@@ -153,11 +153,12 @@ export struct ThreadPostList {
   @Provide @Watch('emptyPagesChanged') emptyPages: Set<number> = new Set
   @State jumpToPage: number = -1
   jumpToPageDone: boolean = false
-  @Provide jumpToPost?: string = undefined
+  @Provide @Watch('onJumpToPostConsumed') jumpToPost?: string = undefined
   @Provide allowPullDownRefresh: boolean = true
   @Provide allowPullUpRefresh: boolean = false
   @Provide pageScrollOffset: Map<number, number> = new Map
   @Provide searchItemsByPage: Map<number, PostSearchItem[]> = new Map
+  outerScroller: Scroller = new Scroller()
   @State replyButtonExpand: boolean = false
   @Provide longScreenshotMode: boolean = false
   @Provide @Watch('selectedPostsChanged') selectedPostsForShot: Map<string, LongScreenshotPost> = new Map
@@ -185,6 +186,19 @@ export struct ThreadPostList {
     autoCancel: true,
     alignment: DialogAlignment.Center
   })
+
+  // 跳转已定位的收尾：目标楼层若为本页最后一层，把外层滚动器一并拉到底
+  onJumpToPostConsumed() {
+    const target = this.pageParam.jumpToPid ?? ''
+    if (this.jumpToPost != '' || target.length == 0 || target == '0') {
+      return
+    }
+    this.searchItemsByPage.forEach((items: PostSearchItem[]) => {
+      if (items.length > 0 && items[items.length - 1].pid == target) {
+        this.outerScroller.scrollEdge(Edge.Bottom)
+      }
+    })
+  }
 
   onPageParamUpdate() {
     if (this.pageParam.replies == undefined) {
@@ -343,6 +357,7 @@ export struct ThreadPostList {
     NavDestination() {
       Stack() {
         OuterScroller({
+          scroller: this.outerScroller,
           onEnterAndLeaveTop: atTop => this.allowPullDownRefresh = atTop,
           onEnterAndLeaveBottom: atBottom => this.allowPullUpRefresh = atBottom
         }) {
@@ -649,6 +664,7 @@ export struct ThreadPostList {
     })
     .bindContentCover($$this.imgViewerShow, this.ImageViewerBuilder, {
       modalTransition: ModalTransition.NONE,
+      transition: TransitionEffect.IDENTITY,
       onWillDismiss: (() => {
         if (!requestImageViewerExit()) {
           this.getUIContext().animateTo({ duration: AniSpeed.ms300 }, () => {
@@ -672,7 +688,7 @@ export struct ThreadPostList {
         param: this.imgViewer,
         showUp: this.imgViewerShow
       })
-    }.transition(TransitionEffect.opacity(.999).animation({ duration: AniSpeed.ms300 })) // 避免退出时没有转场动画就直接消失
+    }
   }
 }
 
@@ -1928,8 +1944,16 @@ export function openThreadPost(param: ThreadPostParam, pathStack: NavPathStack,
   })
 }
 
+// 已知目标页但不知道回帖数时，预估一个至少覆盖到目标页的回帖数，
+// 使落地页能立即计算出不小于目标页的总页数并直接跳转，而无需先落在第1页等待接口回填
+export function estimatedRepliesForPage(page: number, replies?: string): string {
+  const known = parseInt(replies ?? '0') || 0
+  const minForPage = (Math.max(page, 1) - 1) * POST_PER_PAGE + 1
+  return String(Math.max(known, minForPage))
+}
+
 export function openThreadPostByLink(href: string,
-  pathStack: NavPathStack, onFailed: () => void, subject = '', replies = '1', sourceTid?: string,
+  pathStack: NavPathStack, onFailed: () => void, subject = '', replies?: string, sourceTid?: string,
   fallbackToBrowser = false, failedMessage = '') {
   href = ObsoleteDomain.replace(href)
   if (isS1RedirectPostLink(href)) {
@@ -1952,7 +1976,7 @@ export function openThreadPostByLink(href: string,
         tid: weblink.tid,
         jumpToPage: weblink.page,
         subject: sameThread ? subject : undefined,
-        replies: sameThread ? replies : undefined,
+        replies: estimatedRepliesForPage(weblink.page, sameThread ? replies : undefined),
         jumpToPidWithHighlight: true,
         authorid: weblink.authorId
       }

@@ -9,6 +9,7 @@ import { IRcpSession, Rcp, RcpResponse } from '../ArkUIX/Rcp/Rcp';
 import { PreferenceManager } from '../config/UserConfig';
 import { accountInvalid } from '../common/account/AccountManager';
 import { promptAction } from '@kit.ArkUI';
+import { PropKey } from '../common/Constants';
 
 export let userCookieString: string = ''
 
@@ -422,11 +423,24 @@ export function clearAppToken() {
   userAppToken = undefined
 }
 
-let userNotice: Notice
-clearUserNotice()
+function emptyNotice(): Notice {
+  return {
+    newpush: '0',
+    newpm: '0',
+    newprompt: '0',
+    newmypost: '0'
+  }
+}
+
+let userNotice: Notice = emptyNotice()
+
+function syncNoticeToStorage() {
+  AppStorage.setOrCreate<number>(PropKey.noticeNewReply, parseInt(userNotice.newmypost) || 0)
+}
 
 export function setUserNotice(notice: Notice) {
   userNotice = notice
+  syncNoticeToStorage()
 }
 
 export function getUserNotice() {
@@ -434,10 +448,6 @@ export function getUserNotice() {
 }
 
 export function clearUserNotice() {
-  userNotice = {
-    newpush: '0',
-    newpm: '0',
-    newprompt: '0',
-    newmypost: '0'
-  }
+  userNotice = emptyNotice()
+  syncNoticeToStorage()
 }

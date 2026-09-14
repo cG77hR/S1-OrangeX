@@ -63,18 +63,28 @@ const ImageViewerCacheCount = 1
 
 const EXIT_PINCH_SCALE_THRESHOLD = 0.9 // 松手时缩放小于该值则直接退出大图查看器
 
-// 退场时geometryTransition改用无配对id，避免系统退场触发位移转场
-const DETACHED_GEOMETRY_ID_PREFIX = 'imageViewer_detached_'
-
 export let ImageViewerTransitionToSize: RectSize = {
   w: 0,
   h: 0
 }
 
-// 缩略图窗口全局坐标(px)，退场对齐用
+// 缩略图窗口全局坐标(px)，入场对齐与退场对齐共用
 export let ImageViewerTransitionToPos: RectSize = {
   w: 0,
   h: 0
+}
+
+// 最近一次点击缩略图时记录的数据是否有效（区别于头像等未记录尺寸的入口）
+let viewerTransitionValid = false
+
+export function markImageViewerTransitionValid() {
+  viewerTransitionValid = true
+}
+
+export function consumeImageViewerTransitionValid(): boolean {
+  const valid = viewerTransitionValid
+  viewerTransitionValid = false
+  return valid
 }
 
 let activeExitHandler: (() => void) | null = null
@@ -105,14 +115,15 @@ export struct ImageViewer {
   @StorageProp(SafeArea.top) topRectHeight: number = 0
   imgTransform: matrixHelper[] = []
   dismissDragging: boolean = false
-  @State exiting: boolean = false // 退场进行中，geometryTransition保持解绑
+  @State exiting: boolean = false // 退场进行中：防重入并屏蔽手势
   @State imgLoaded: boolean[] = []
   @State imgLoadFailed: boolean[] = []
   @State showButton: boolean = true
   @State imgContainerSizeState: RectSize = imgContainerSize // 用于旋屏后刷新图片大小
   @State transitionExitEffect: TransitionEffect | undefined = undefined
   @State bgOpacity: number = 1
-  @State imgOpacity: number = 1 // 退场第一阶段图片本体渐隐
+  @State imgOpacity: number = 0
+  enterPending: boolean = false // 入场飞入待执行（等图片尺寸就绪）
 
   aboutToAppear(): void {
     this.targetSwiperIndex = this.swiperIndex = this.param.startAt
@@ -124,6 +135,12 @@ export struct ImageViewer {
     this.imgCount = this.param.urls.length
     SetStatusBarColor(this.context, themeColorDark)
     activeExitHandler = (): void => this.beginExit()
+    // 入场飞入：仅在点击ImageContainer打开（锚点数据有效）时进行
+    this.enterPending = consumeImageViewerTransitionValid() &&
+      ImageViewerTransitionToSize.w > 0 && ImageViewerTransitionToSize.h > 0
+    if (!this.enterPending) {
+      this.imgOpacity = 1
+    }
   }
 
   aboutToDisappear(): void {
@@ -150,10 +167,7 @@ export struct ImageViewer {
     const canAlign = this.swiperIndex == this.param.startAt &&
       helper.width > 0 && ImageViewerTransitionToSize.w > 0 && ImageViewerTransitionToSize.h > 0
     if (!canAlign) {
-      // 延迟一拍，让geometryTransition解绑先生效
-      setTimeout(() => {
-        this.finishExit()
-      }, 0)
+      this.finishExit()
       return
     }
     const targetScale = ImageViewerTransitionToSize.w / helper.width
@@ -184,7 +198,6 @@ export struct ImageViewer {
     if (!this.exiting) {
       return
     }
-    // 不重置exiting，退场期间geometryTransition维持解绑
     this.getUIContext()
       .animateTo(SpringCurve, () => {
         this.showUp = false
@@ -305,7 +318,6 @@ export struct ImageViewer {
       .height('100%')
       .backgroundColor(Color.Black)
       .opacity(this.bgOpacity)
-      .transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms300 }))
 
       Swiper() {
         LazyForEach(this.dataSource, (pageIndex: number, compIndex: number) => {
@@ -323,16 +335,20 @@ export struct ImageViewer {
               afterResize: (size) => {
                 this.imgLoaded[compIndex] = true
                 this.imgTransform[compIndex].setImageSize(size.w, size.h)
+                if (compIndex == this.param.startAt && this.enterPending) {
+                  this.startEnterFly()
+                }
               },
               onFailed: () => {
                 this.imgLoadFailed[compIndex] = true
+                if (compIndex == this.param.startAt && this.enterPending) {
+                  this.enterPending = false
+                  this.imgOpacity = 1
+                }
               }
             })
               .transform(this.imgMatrix[compIndex])
               .opacity(this.imgOpacity)
-              .geometryTransition(this.exiting
-                ? DETACHED_GEOMETRY_ID_PREFIX + compIndex
-                : generateImageViewerTransitionKey(this.param.urls[compIndex], compIndex.toString()))
               .transition(this.transitionExitEffect)
           }
           .width('100%')
@@ -456,11 +472,33 @@ export struct ImageViewer {
       .padding(10)
       .justifyContent(FlexAlign.SpaceBetween)
     }.alignContent(Alignment.Top)
+    .transition(TransitionEffect.asymmetric(
+      // 入场渐显200ms提速；退场整层淡出保持300ms不变
+      TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms200, curve: Curve.EaseIn }),
+      TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms300, curve: Curve.EaseIn })
+    ))
   }
 
   updateImageTransformMatrix() {
     this.imgMatrix[this.swiperIndex] = this.imgTransform[this.swiperIndex].getMat()
     this.updateButtonVisibility()
+  }
+
+  /** 入场飞入：首帧把图片放到缩略图位置，EaseIn动画回中——靠近原位的较长一段保持透明以掩盖对位误差 */
+  startEnterFly() {
+    this.enterPending = false
+    const helper = this.imgTransform[this.param.startAt]
+    const targetScale = ImageViewerTransitionToSize.w / helper.width
+    const centerX = ImageViewerTransitionToPos.w + ImageViewerTransitionToSize.w / 2
+    const centerY = ImageViewerTransitionToPos.h + ImageViewerTransitionToSize.h / 2
+    helper.setExitTarget(targetScale, centerX, centerY)
+    this.updateImageTransformMatrix()
+    this.imgOpacity = 1
+    this.getUIContext()
+      .animateTo({ duration: AniSpeed.ms200, curve: Curve.EaseIn }, () => {
+        helper.reset()
+        this.updateImageTransformMatrix()
+      })
   }
 
   finishScaleGesture(restore: () => void) {
@@ -626,8 +664,7 @@ class matrixHelper {
   /** 100%缩放态的拖拽：下拖按距离缩小缩放，上拖不缩放，位移均跟手 */
   updateDismissDrag(offsetX: number, offsetY: number) {
     if (offsetY > 0) {
-      // 下滑约容器高度40%时缩放降至80%（退场阈值），拖拽距离与缩放线性对应
-      this.scaleRatio = Math.max(0.1, 1 - offsetY / (imgContainerSize.h * 2))
+      this.scaleRatio = Math.max(0.1, 1 - offsetY / 800) // 800vp 彻底消失
     }
     this.translate.X = offsetX / this.scaleRatio
     this.translate.Y = offsetY / this.scaleRatio
@@ -815,8 +852,4 @@ function ultraThinBlur() {
     width: 1,
     color: 'rgba(255, 255, 255, 0.2)'
   })
-}
-
-export function generateImageViewerTransitionKey(url: string, indexInUrls: string) {
-  return 'imageContainer_' + url + indexInUrls
 }

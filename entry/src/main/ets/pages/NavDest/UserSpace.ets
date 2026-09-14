@@ -385,7 +385,8 @@ export struct UserSpace {
       this.popBack()
       return true
     }).bindContentCover($$this.imgViewerShow, this.ImageViewerBuilder, {
-      modalTransition: ModalTransition.ALPHA,
+      modalTransition: ModalTransition.NONE,
+      transition: TransitionEffect.IDENTITY,
       onWillDismiss: (() => {
         if (!requestImageViewerExit()) {
           this.getUIContext().animateTo(SpringCurve, () => {

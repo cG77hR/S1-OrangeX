@@ -1,13 +1,3 @@
-import { common } from '@kit.AbilityKit'
-import { window } from '@kit.ArkUI'
-import { AppThemeColor } from './basic/basic'
-
-export function SetStatusBarColor(context: common.UIAbilityContext, theme: AppThemeColor) {
-  window.getLastWindow(context).then((windowClass): void => {
-    windowClass.setWindowBackgroundColor(theme.backgroundSecondary?.toString())
-    windowClass.setWindowSystemBarProperties({
-      statusBarColor: theme.titleBar?.toString(),
-      statusBarContentColor: theme.titleBarFont?.toString()
-    })
-  })
-}
+// common/theme/SetStatusBarColor.ets 的全部内容
+// 功能已全部迁移到 src/main/ets/ArkUIX/Utils/SetStatusBarColor.ets
+// 保留这个文件防止意外的自动合并
