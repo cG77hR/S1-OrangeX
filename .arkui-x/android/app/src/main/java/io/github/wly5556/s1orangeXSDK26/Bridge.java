@@ -549,6 +549,33 @@ public class Bridge extends BridgePlugin implements IMessageListener, IMethodRes
         }
     }
 
+    public boolean copyUriToFile(String uriString, String destPath) {
+        try (InputStream inputStream = context.getContentResolver().openInputStream(Uri.parse(uriString))) {
+            if (inputStream == null) {
+                ALog.w("Bridge", "copyUriToFile: resolver returned null stream for " + uriString);
+                return false;
+            }
+            File destFile = new File(destPath);
+            File parent = destFile.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                ALog.w("Bridge", "copyUriToFile: cannot create parent dir " + parent.getPath());
+                return false;
+            }
+            try (FileOutputStream outputStream = new FileOutputStream(destFile)) {
+                byte[] buffer = new byte[8192];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, length);
+                }
+                outputStream.flush();
+                return true;
+            }
+        } catch (Exception e) {
+            ALog.w("Bridge", "copyUriToFile failed: " + e.getMessage());
+            return false;
+        }
+    }
+
     public void setNightMode(Integer mode) {
         // ArkUI-X侧切换到深色模式后调用，使得ArkUI-X框架内侧能把配色（如文字）切换到对应模式
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

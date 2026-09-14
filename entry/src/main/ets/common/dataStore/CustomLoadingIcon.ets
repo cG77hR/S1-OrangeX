@@ -1,7 +1,9 @@
 import { common } from '@kit.AbilityKit'
-import { fileIo as fs, picker } from '@kit.CoreFileKit'
+import { fileIo as fs, fileUri, picker } from '@kit.CoreFileKit'
 import { Event } from '../Events'
 import { storeBaseDir } from './JsonPersist'
+import { PlatformInfo, PlatformTypeEnum } from '../../ArkUIX/PlatformInfo'
+import { PlatformBridge } from '../../ArkUIX/BridgeFunction'
 
 const LOADING_ICON_DIR = 'custom_loading_icon'
 const LOADING_ICON_BASE_NAME = 'loading_icon'
@@ -74,7 +76,13 @@ export async function setCustomLoadingIcon(uri: string): Promise<void> {
   const ext = extensionOfSelectedFile(uri)
   // 文件名带时间戳，保证路径变化时 Image 组件会重新加载新图
   const targetPath = `${dir}/${LOADING_ICON_BASE_NAME}_${Date.now()}.${ext}`
-  await fs.copyFile(uri, targetPath)
+  if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID) {
+    if (!await PlatformBridge.copyUriToFile(uri, targetPath)) {
+      throw new Error('copyUriToFile failed')
+    }
+  } else {
+    await fs.copyFile(uri, targetPath)
+  }
   getContext().eventHub.emit(Event.CustomLoadingIconChanged)
 }
 
@@ -92,8 +100,10 @@ export async function pickAndSetCustomLoadingIcon(context: common.UIAbilityConte
   if (result.length == 0) {
     return false
   }
-  // ArkUI-X（Android）上 new fileUri.FileUri(uri).path 不可用，直接把选择器返回的 uri 交给 fileIo，
-  // 与仓库其它选图读取处（ReplyImagePicker 的 fs.open(选图uri)、PersonalDataBackup 的 writeTextFile）保持一致。
-  await setCustomLoadingIcon(result[0])
+  if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
+    await setCustomLoadingIcon(new fileUri.FileUri(result[0]).path)
+  } else {
+    await setCustomLoadingIcon(result[0])
+  }
   return true
 }

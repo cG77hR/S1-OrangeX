@@ -177,6 +177,15 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 - Android：通过 `Bridge.onWindowInsetsListener` 回调，由 `EntryEntryAbilityActivity` 用 `WindowInsetsCompat` 计算三值后回传。
 - 两端都写入同一组 `AppStorage(SafeArea.*)` key，UI 层用 `@StorageProp` 消费，无需关心平台。
 
+## picker 返回的 uri 怎么读写
+
+- Android 的 file.fs 插件不认 `content://` uri：`fs.open` 报 `13900002`，`fs.copyFile`/`fs.readText` 以 uri 为源同样失败。fileIo 只能操作沙箱路径。
+- `new fileUri.FileUri(uri).path` 在 Android 上抛异常，仅限 HOS 分支使用。
+- Android 侧：图片走 `PlatformBridge.photoViewPicker`，原生层已把图片拷进 cache，回传的是沙箱路径；文档 uri 先经 `PlatformBridge.copyUriToFile(uri, destPath)` 落到沙箱（文本用 `readTextFromUri`），再交给 fileIo。
+- 沙箱内读写用 `fs.open`/`fs.read`/`fs.write` 组合，不要用 `fs.copyFile`。
+- HOS 侧沿用上游写法：`fileUri.FileUri(uri).path` 转成路径后 `fs.copyFile(path, target)`。
+- 桥返回值用基础类型，不传大数组。
+
 ## 缺陷备忘（开发与合并时易踩坑，详见 README 表）
 
 - **`promptAction.showToast`（SDK26 🟢，但仍统一封装）** → 当前 SDK26 上 README 已标记为已解决，但业务代码仍应一律走 `ArkUIX/Utils/ShowToast`，由它在 Android 侧桥接到原生 Toast。这样可以保持平台行为一致，也避免后续回归时到处排查。
@@ -184,7 +193,7 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 - **`setColorMode` 跨平台（SDK26 🟡）**：不要把业务逻辑直接绑到 `context.setColorMode` 上。深浅色模式在 Android 继续走 `PlatformBridge.setNightMode` + 手动维护 `AppStorage(PropKey.currentColorMode)`（见 `ArkUIX/Utils/SetNightMode.ets` 与 `EntryAbility.ets`），业务代码统一走 `SetNightMode()`。
 - **`request.agent` 下载需 header 认证时失败（🔴）**：Android 桥接层 `canMakeRequest` 会额外发一次不带 header 的预请求。用 `DownloadFile`（`ArkUIX/Utils/Download.ets`）规避，**不要**直接用 `request.agent`。
 - **`Image` svg `fillColor`（SDK26 🟢）**：当前可正常使用 `.fillColor(...)`。涉及 svg 图标着色时按现有写法保持即可。
-- **`geometryTransition` 落点偏移**：`ThreadPostList` 里图片预览转场被临时改为 `TransitionEffect.opacity(0)`，合并 upstream 对该转场的改动时不要盲目恢复。
+- **`geometryTransition` 落点偏移（已解决）**：早期 ArkUI-X 上图片预览转场落点与组件长宽成比例偏离，曾把 `ThreadPostList` 的图片预览转场临时改为 `TransitionEffect.opacity(0)` 规避。upstream 的「图片查看器过渡动画优化」（两段式退场：退场时 geometryTransition 换用无配对 id 解绑，由查看器自行计算落点做对齐动画）已绕开该问题，临时 workaround 已移除，恢复 upstream 写法即可。
 - **子线程内 `vp2px` 未定义（🔴）**：`ImageKnife` 用了修改过的 har（`libs/ImageKnife3.2.0.har`），从主线程传 vp/px 比例；**不要**替换成 ohpm 上的原版。
 - **`setTimeout` 不传 delay 不执行回调（🔴）**：始终显式传 `delay`（哪怕是 0）。
 - **ArkTS 声明式 Builder 分支里不要擅自提取局部变量**：像 `if (...) { Xxx({ prop: someCall() }) }` 这种 upstream 原写法，迁移时**不要**为了“避免重复调用”改成 `const v = someCall(); if (v !== undefined) { Xxx({ prop: v }) }` 再直接塞进 `@Builder` / `ForEach` / `if` 的 UI 分支里。ArkTS 对声明式语法比普通 TS 更严格，这类局部声明很容易直接语法错误。若确实要消除重复调用，优先提到普通方法里，或先确认该位置允许局部变量声明。
