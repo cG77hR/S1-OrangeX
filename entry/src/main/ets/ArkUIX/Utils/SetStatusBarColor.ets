@@ -21,7 +21,8 @@ export function SetStatusBarColor(context: common.UIAbilityContext, theme: AppTh
 
 function setSystemBarsEnabled(context: common.UIAbilityContext, visible: boolean) {
   window.getLastWindow(context).then((windowClass): void => {
-    if (canIUse('SystemCapability.Window.SessionManager')) {
+    // android侧canIuse不通过，但是能用
+    if (PlatformInfo.getPlatform() == PlatformTypeEnum.ANDROID || canIUse('SystemCapability.Window.SessionManager')) {
       windowClass.setSpecificSystemBarEnabled('status', visible, true)
       windowClass.setSpecificSystemBarEnabled('navigation', visible, true)
       windowClass.setSpecificSystemBarEnabled('navigationIndicator', visible, true)
