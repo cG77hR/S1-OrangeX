@@ -11,7 +11,7 @@ import { extractFileName } from '../TextUtil';
 import { LoadingIcon } from './LoadingIcon';
 import { PreferenceState } from '../../pages/NavProvider/NavigationPage';
 import { FontSizeEnum } from '../fontSize/FontSizeEnum';
-import { promptAction } from '@kit.ArkUI';
+import { promptAction, componentUtils } from '@kit.ArkUI';
 import { PreferenceManager } from '../../config/UserConfig';
 import { ArrayDataSource } from '../BasicDataSource';
 import { RipImageItem, RipImageUpload } from '../../api/model/ripImage/sda1';
@@ -20,7 +20,12 @@ import { ShowToast } from '../../ArkUIX/Utils/ShowToast';
 import { PhotoViewPicker } from '../../ArkUIX/Utils/PhotoViewPicker';
 import { MultipartForm } from '../../ArkUIX/Rcp/Rcp';
 import { TabBarSelector } from './TabBarSelector';
-import { ImageViewer, ImageViewerParam, requestImageViewerExit } from './ImageViewer';
+import {
+  ImageViewer,
+  ImageViewerParam,
+  requestImageViewerExit,
+  markImageViewerTransition
+} from './ImageViewer';
 
 const IMG_THUMBNAIL_HEIGHT = 150
 
@@ -164,6 +169,11 @@ export struct ReplyImagePicker {
         message: '论坛附件为预览图，清晰度低于实际效果'
       })
     }
+    try {
+      const rect = componentUtils.getRectangleById('reply_picker_img_' + clickedId)
+      markImageViewerTransition(rect.size.width, rect.size.height, rect.windowOffset.x, rect.windowOffset.y)
+    } catch (e) {
+    }
     this.getUIContext().animateTo(SpringCurve, () => {
       this.imgViewerShow = true
     })
@@ -278,6 +288,7 @@ export struct ReplyImagePicker {
                               })
                           }
                           Image(image.url)
+                            .id('reply_picker_img_' + image.id)
                             .onComplete(() => {
                               this.imgLoaded[image.id] = true
                             })
