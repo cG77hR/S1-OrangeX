@@ -198,6 +198,8 @@ if (PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS) {
 - **`setTimeout` 不传 delay 不执行回调（🔴）**：始终显式传 `delay`（哪怕是 0）。
 - **ArkTS 声明式 Builder 分支里不要擅自提取局部变量**：像 `if (...) { Xxx({ prop: someCall() }) }` 这种 upstream 原写法，迁移时**不要**为了“避免重复调用”改成 `const v = someCall(); if (v !== undefined) { Xxx({ prop: v }) }` 再直接塞进 `@Builder` / `ForEach` / `if` 的 UI 分支里。ArkTS 对声明式语法比普通 TS 更严格，这类局部声明很容易直接语法错误。若确实要消除重复调用，优先提到普通方法里，或先确认该位置允许局部变量声明。
 - **`getComponentSnapshot` / 界面安全区监听（SDK26 🟢）**：这两项是当前可依赖能力。长截图与 Android 安全区桥接都基于它们实现。
+- **回帖页工具面板的高度锚定（Android）**：面板高度是否锚定系统键盘高度统一走 `toolsPanelAnchoredToKeyboard()`——HOS 看 `SafeArea.keyboard`，Android 一律按自由高度（打开工具栏时会主动 `hideSoftKeyboard()`，`keyboardHeight` 不反映面板状态，据此判定会让拖拽完全无法触发）。自由高度下高度由 `toolPanelHeight` 驱动，拖拽改的也是它。
+- **回帖页工具态的光标/选区（SDK26 🟢）**：Android 切到工具态会 `hideSoftKeyboard()`，textarea 随即 blur 并清掉选区，光标/把柄消失。解法是在 blur 时 `focusControl.requestFocus(TEXTAREA_ID)` 再 `setTextSelection` 复原选区，且**待恢复的选区要在 `hideSoftKeyboard()` 之前存好**（blur 早于其 Promise 回调）。同步的 `getUIContext().getFocusController().requestFocus` 不支持 arkuix，不可用。
 - **`request.agent`/相对时间格式化/JSON import 等 SDK 版本相关缺陷**：统一看 README 兼容性表的 **SDK26** 列。
 - **`Image` svg 仅支持 `path` 格式**：`<Rect><Rect /><g> ... <g/>` 这类 svg 图标仍可能不受支持，替换图标资源时留意。
 

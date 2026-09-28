@@ -179,6 +179,9 @@ export struct WriteReply {
   onShowToolsChanged() {
     if (this.showTools) {
       this.toolPanelHeight = this.toolPanelOriginHeight()
+    } else {
+      // 工具栏关闭后无需再 blur 回焦，清掉标记避免后续 blur 时抢焦点
+      this.selectionRePosWhenBlur = undefined
     }
   }
 
@@ -191,7 +194,20 @@ export struct WriteReply {
       this.toolPanelHeight = Math.max(origin, this.containerHeight - 300)
     } else {
       this.showTools = false
+      if (PlatformInfo.getPlatform() != PlatformTypeEnum.HARMONYOS) {
+        // HOS 移除 customKeyboard 后系统 ime 会自动回来；Android 不会，需要主动 focus 输入框
+        setTimeout(() => focusControl.requestFocus(TEXTAREA_ID), 0)
+      }
     }
+  }
+
+  /**
+   * 工具面板是否锚定系统键盘高度（锚定时高度由键盘决定，不参与拖拽）。
+   * HOS 用空的 customKeyboard 顶掉系统键盘，keyboardHeight 归 0 后即为自由高度；
+   * Android 打开工具栏时会主动 hideSoftKeyboard，keyboardHeight 不反映面板状态，一律按自由高度处理。
+   */
+  toolsPanelAnchoredToKeyboard(): boolean {
+    return PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS && this.keyboardHeight > 0
   }
 
   onEditorFocus() {
@@ -376,13 +392,10 @@ export struct WriteReply {
         this.showTools = true
         this.toolPanelController.changeIndex(index, false)
         if (PlatformInfo.getPlatform() != PlatformTypeEnum.HARMONYOS) {
-          const selection = dupTextRange(this.selection)
-          PlatformBridge.hideSoftKeyboard().then(() => {
-            // 隐藏android系统键盘会导致textarea blur，并清除选区，需要主动focus
-            // this.getUIContext().getFocusController().requestFocus 是同步focus方法，但不支持arkuix
-            // 只能等待blur后，再focus并恢复选区
-            this.selectionRePosWhenBlur = selection
-          })
+          // 隐藏android系统键盘会让 textarea blur 并清掉选区，需在 blur 时主动 focus 回来、
+          // focus 后再复原选区（见 onBlur/onFocus）；待恢复的选区要在 hideSoftKeyboard 前存好
+          this.selectionRePosWhenBlur = dupTextRange(this.selection)
+          PlatformBridge.hideSoftKeyboard()
         }
       } else {
         this.toolPanelController.changeIndex(index, true)
@@ -703,7 +716,7 @@ export struct WriteReply {
         .zIndex(100)
         .gesture(PanGesture({ direction: PanDirection.Vertical })
           .onActionStart(() => {
-            if (this.showTools && this.keyboardHeight === 0) {
+            if (this.showTools && !this.toolsPanelAnchoredToKeyboard()) {
               this.draggingToolPanel = true
               this.toolPanelDragStartHeight = this.toolPanelHeight
             }
@@ -850,7 +863,7 @@ export struct WriteReply {
           .backgroundColor(this.appTheme.backgroundTertiary)
           .expandSafeArea([SafeAreaType.KEYBOARD, SafeAreaType.SYSTEM])
           .height(this.showTools ?
-            (this.keyboardHeight > 0 ? px2vp(this.keyboardExpendHeight) : this.toolPanelHeight) :
+            (this.toolsPanelAnchoredToKeyboard() ? px2vp(this.keyboardExpendHeight) : this.toolPanelHeight) :
             this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : (
               PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS ? 0 : px2vp(this.keyboardHeight)
             ))

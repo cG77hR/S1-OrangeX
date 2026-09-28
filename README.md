@@ -32,7 +32,7 @@
 | getComponentSnapshot           | 🔴        | 🔴              | 🔴        | 🟢        | 长截图依赖的API                                                                                                                                                  |
 | 界面安全区size监听                    | 🟡        | 🟡              | 🟡        | 🟢        | 桥接到Android API                                                                                                                                             |
 | deviceInfo.apiAvailable        |           |                 |           | 🟡        | SDK26 beta1 中虽然文档标注支持跨平台，但实际不可调用；当前以 `deviceInfo.sdkApiVersion >= x` 作为替代判断                                                                                |
-| focusControl.requestFocus      | 🟡        | 🟢              |           | 🔴        | 用于处理安卓平台回帖时打开工具栏后选区消失的问题。全局 `focusControl.requestFocus`：SDK17 可用，SDK26 失效；改用 `getUIContext().getFocusController().requestFocus`（标注为自 API22 跨平台）在 SDK26 无效。 |
+| focusControl.requestFocus      | 🟡        | 🟢              |           | 🟢        | 回帖页切到工具态时 `hideSoftKeyboard()` 会让 textarea blur 并清掉选区（光标/把柄消失），需在 blur 后用它把输入框 focus 回来；待恢复的选区要在调用 `hideSoftKeyboard()` 之前存好。同步的 `getUIContext().getFocusController().requestFocus` 不支持 arkuix，不可用。 |
 
 🔴：问题不可绕过
 🟡：问题可绕过
