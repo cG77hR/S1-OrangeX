@@ -18,6 +18,7 @@ import { openThreadPost, ThreadPostParam } from '../NavDest/ThreadPostList'
 import { Event } from '../../common/Events'
 import { unescapeAll } from '../../common/XmlParser'
 import { BottomSafeArea } from '../../common/component/BottomSafeArea'
+import { contentTextColor } from '../../common/component/preference/TextColorPref'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { PageSlider } from '../../common/component/PageSlider'
 import { PreferenceManager } from '../../config/UserConfig'
@@ -513,18 +514,18 @@ struct ThreadListPage {
     this.dataLoading = true
     let requestPageIndex = this.pageToLoad.toString()
     const pageAtRequest = this.pageToLoad
-    session.join(`forumThreads,${this.forumId},${requestPageIndex},${this.threadTypeFilter}`,
+    session.join(
       (): Promise<wrapper<ThreadList>> =>
-      new request<wrapper<ThreadList>>(URL.FORUM_THREAD_LIST)
-        .param('fid', this.forumId)
-        .param('page', requestPageIndex)
-        .param('typeid', this.threadTypeFilter)
-        .param('tpp', THREAD_PER_PAGE.toString())
-        .cache((v): void => {
-          this.waitHint.begin()
-          this.processThreadList(v)
-        }, this.threadList.length > 0)
-        .get())
+        new request<wrapper<ThreadList>>(URL.FORUM_THREAD_LIST)
+          .param('fid', this.forumId)
+          .param('page', requestPageIndex)
+          .param('typeid', this.threadTypeFilter)
+          .param('tpp', THREAD_PER_PAGE.toString())
+          .cache((v): void => {
+            this.waitHint.begin()
+            this.processThreadList(v)
+          }, this.threadList.length > 0)
+          .get())
       .then((v): Promise<wrapper<ThreadList>> => {
         if (this.pageToLoad == pageAtRequest) {
           return this.processThreadList(v)
@@ -578,6 +579,7 @@ struct ThreadListPage {
                       .fontColor(this.appTheme.fontEmphasize).transition(OpacityTransition)
                   }
                 }.fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                .fontColor(contentTextColor(this.appState, this.appTheme.isDark))
                 .lineSpacing({
                   value: this.appState.contentLineSpace,
                   unit: LengthUnit.VP

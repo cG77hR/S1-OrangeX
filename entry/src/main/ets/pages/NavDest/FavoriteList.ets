@@ -18,6 +18,7 @@ import { SpringCurve } from '../../common/Animation'
 import Account from '../../api/model/account'
 import { LongPressDelete } from '../../common/component/LongPressDelete'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
+import { contentTextColor } from '../../common/component/preference/TextColorPref'
 import { PreferenceState } from '../NavProvider/NavigationPage'
 import { ReloadController } from '../../common/BasicDataSource'
 import { PropKey } from '../../common/Constants'
@@ -126,6 +127,7 @@ struct SingleFavPage {
   loadingIcon?: SwipePageLoadingIcon
   @Consume totalPage: number
   @Consume appState: PreferenceState
+  @Consume appTheme: AppThemeColor
   @State favItem: FavItemVM[] = []
 
   aboutToAppear(): void {
@@ -204,6 +206,7 @@ struct SingleFavPage {
             .textAlign(TextAlign.Start)
             .flexGrow(1)
             .flexShrink(1)
+            .fontColor(contentTextColor(this.appState, this.appTheme.isDark))
             .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
             .lineSpacing({
               value: this.appState.contentLineSpace,

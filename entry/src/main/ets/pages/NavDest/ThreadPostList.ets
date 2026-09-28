@@ -55,7 +55,8 @@ import {
 import { BLOCK_USER_LIST_STATE, BlockUser, UnblockUser } from '../../common/dataStore/BlockUser'
 import { ThreadDataApp } from '../../api/model/app/thread'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
-import { HiddenPostDisplay } from '../../config/v1/default'
+import { HiddenPostDisplay, PostColorMode } from '../../config/v1/default'
+import { contentTextColor } from '../../common/component/preference/TextColorPref'
 import { PreferenceManager } from '../../config/UserConfig'
 import { LengthUnit } from '@kit.ArkUI'
 import { PropKey, SafeArea } from '../../common/Constants'
@@ -1183,7 +1184,7 @@ struct SinglePostPage {
     }
     this.loadingBegin()
 
-    session.join(`threadPosts,${this.pageParam.tid},${this.pageToLoad},${this.pageParam.authorid || ''}`,
+    session.join(
       (): Promise<wrapper<PostListV4>> =>
       new request<wrapper<PostListV4>>(URL.THREAD_POST_LIST_V4)
         .param('tid', this.pageParam.tid)
@@ -1199,7 +1200,7 @@ struct SinglePostPage {
           }
         }
       })
-    session.join(`threadApp,${this.pageParam.tid},${this.pageToLoad},${this.pageParam.authorid || ''}`,
+    session.join(
       (): Promise<wrapperApp<ThreadDataApp>> =>
       new request<wrapperApp<ThreadDataApp>>(URL.THREAD_POST_APP, URL.APP_BASE)
         .appToken()
@@ -1260,7 +1261,7 @@ struct SinglePostPage {
     Menu() {
       MenuItem({
         content: this.blockList.has(post.uid) ? '取消屏蔽' : '屏蔽'
-      }).onClick(() => {
+      }).contentFont({ weight: FontWeight.Normal }).onClick(() => {
         if (this.blockList.has(post.uid)) {
           UnblockUser(post.uid)
         } else {
@@ -1269,7 +1270,7 @@ struct SinglePostPage {
       })
       MenuItem({
         content: '编辑标签'
-      }).onClick(() => {
+      }).contentFont({ weight: FontWeight.Normal }).onClick(() => {
         this.tagDialogPost = post
         if (followHandDialogActive(this.appState)) {
           this.userTagPopupUid = post.uid
@@ -1500,11 +1501,14 @@ struct SinglePostPage {
         },
         getAttachInfo: (aid: string): Attachment | undefined => this.getAttachInfo(pid, aid),
         lazyLoadImage: true,
-        adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust
+        adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust,
+        contentTextColor: contentTextColor(this.appState, this.appTheme.isDark),
+        ignorePostColor: this.appState.postColorMode == PostColorMode.ignorePostColor
       })
     },
       (uiRoot: UIRootNode, index: number) => index.toString() + this.appState.fontSize +
-        this.appState.fontSizeOverride + this.appState.darkModeContentColorAdjust + this.appTheme.isDark)
+        this.appState.fontSizeOverride + this.appState.darkModeContentColorAdjust + this.appTheme.isDark +
+        this.appState.textColorLight + this.appState.textColorDark + this.appState.postColorMode)
   }
 
   @LocalBuilder

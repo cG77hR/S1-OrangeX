@@ -14,6 +14,7 @@ import wrapper from '../../api/wrapper'
 import Account from '../../api/model/account'
 import { unescapeXml } from '../../common/XmlParser'
 import { buildFontColorPicker } from '../../common/component/FontColorPicker'
+import { contentTextColor } from '../../common/component/preference/TextColorPref'
 import {
   DraftDbSetUser,
   DraftItem,
@@ -137,7 +138,12 @@ export struct WriteReply {
   @StorageProp(SafeArea.keyboard) @Watch('updateKeyboardExpendHeight') keyboardHeight: number = 0
   @State keyboardExpendHeight: number = vp2px(350)
   focusedEditorCount: number = 0
-  @State showTools: boolean = false
+  @State @Watch('onShowToolsChanged') showTools: boolean = false
+  @State toolPanelIndex: number = 0
+  @State toolPanelHeight: number = 0
+  draggingToolPanel: boolean = false
+  toolPanelDragStartHeight: number = 0
+  containerHeight: number = 0
   @StorageProp(PropKey.userId) @Watch('loadUser') uid?: string = undefined
   @State quote?: Quote = undefined
   @State essentialDataReady: boolean = false
@@ -163,6 +169,28 @@ export struct WriteReply {
   updateKeyboardExpendHeight() {
     if (this.keyboardHeight > 0) {
       this.keyboardExpendHeight = this.keyboardHeight
+    }
+  }
+
+  toolPanelOriginHeight(): number {
+    return px2vp(this.keyboardExpendHeight)
+  }
+
+  onShowToolsChanged() {
+    if (this.showTools) {
+      this.toolPanelHeight = this.toolPanelOriginHeight()
+    }
+  }
+
+  settleToolPanelHeight() {
+    const origin = this.toolPanelOriginHeight()
+    const delta = this.toolPanelHeight - origin
+    if (Math.abs(delta) <= 100) {
+      this.toolPanelHeight = origin
+    } else if (delta > 0) {
+      this.toolPanelHeight = Math.max(origin, this.containerHeight - 300)
+    } else {
+      this.showTools = false
     }
   }
 
@@ -328,7 +356,8 @@ export struct WriteReply {
       Image(img)
         .width(FontSizeEnum[this.appState.fontSize].vp32)
         .height(FontSizeEnum[this.appState.fontSize].vp32)
-        .fillColor(this.appTheme.fontSecondary)
+        .fillColor(this.showTools && this.toolPanelIndex === index ?
+          this.appTheme.fontPrimary : this.appTheme.fontSecondary)
         .draggable(false)
     }
     .width(TOOL_BAR_HEIGHT)
@@ -358,6 +387,7 @@ export struct WriteReply {
       } else {
         this.toolPanelController.changeIndex(index, true)
       }
+      this.toolPanelIndex = index
     })
   }
 
@@ -569,6 +599,7 @@ export struct WriteReply {
             })
               .id(TEXTAREA_ID)
               .fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+              .fontColor(contentTextColor(this.appState, this.appTheme.isDark))
               .customKeyboard(this.showTools ? this.blankKeyboard() : undefined)
               .onClick(e => {
                 if (this.showTools) {
@@ -670,6 +701,30 @@ export struct WriteReply {
         .shadow(this.showTools ? ShadowStyle.OUTER_DEFAULT_XS : undefined)
         .animation({ duration: 100 })
         .zIndex(100)
+        .gesture(PanGesture({ direction: PanDirection.Vertical })
+          .onActionStart(() => {
+            if (this.showTools && this.keyboardHeight === 0) {
+              this.draggingToolPanel = true
+              this.toolPanelDragStartHeight = this.toolPanelHeight
+            }
+          })
+          .onActionUpdate(e => {
+            if (this.draggingToolPanel) {
+              this.toolPanelHeight = Math.max(0, this.toolPanelDragStartHeight - e.offsetY)
+            }
+          })
+          .onActionEnd(() => {
+            if (this.draggingToolPanel) {
+              this.draggingToolPanel = false
+              this.settleToolPanelHeight()
+            }
+          })
+          .onActionCancel(() => {
+            if (this.draggingToolPanel) {
+              this.draggingToolPanel = false
+              this.settleToolPanelHeight()
+            }
+          }))
 
         if (this.uid) {
           Row() {
@@ -787,20 +842,27 @@ export struct WriteReply {
             .loop(false)
             .cachedCount(0)
             .indicator(false)
+            .onChange(index => {
+              this.toolPanelIndex = index
+            })
             .opacity(this.showTools ? 1 : 0)
           }
           .backgroundColor(this.appTheme.backgroundTertiary)
           .expandSafeArea([SafeAreaType.KEYBOARD, SafeAreaType.SYSTEM])
-          .height(this.showTools ? px2vp(this.keyboardExpendHeight) :
+          .height(this.showTools ?
+            (this.keyboardHeight > 0 ? px2vp(this.keyboardExpendHeight) : this.toolPanelHeight) :
             this.keyboardHeight === 0 ? px2vp(this.bottomRectHeight) : (
               PlatformInfo.getPlatform() == PlatformTypeEnum.HARMONYOS ? 0 : px2vp(this.keyboardHeight)
             ))
           .clip(true)
-          .animation(SpringCurve)
+          .animation(this.draggingToolPanel ? { duration: 0 } : SpringCurve)
           .width('100%')
         }
       }.width('100%')
       .height('100%')
+      .onAreaChange((oldArea, newArea) => {
+        this.containerHeight = newArea.height as number
+      })
     }
     .hideTitleBar(true)
     .expandSafeArea(
@@ -857,7 +919,7 @@ export struct WriteReply {
   SheetContent() {
     if (this.sheetMode === WriteReplySheetMode.FONT_COLOR) {
       buildFontColorPicker((colorValue) => {
-        this.wrapText(`[color=${colorValue}]`, '[color]')
+        this.wrapText(`[color=${colorValue}]`, '[/color]')
       })
     } else if (this.sheetMode === WriteReplySheetMode.MARKDOWN_IMPORT) {
       this.MarkdownImportSheet()

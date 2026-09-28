@@ -11,6 +11,28 @@ import { accountInvalid } from '../common/account/AccountManager';
 import { promptAction } from '@kit.ArkUI';
 import { PropKey } from '../common/Constants';
 
+const inFlightRequests: Map<string, Promise<object>> = new Map()
+
+/**
+ * 网络请求在途去重：key 相同且仍有未完成的请求时复用同一 Promise，settle 后从表中移除。
+ */
+function joinInFlight<T>(key: string, issue: () => Promise<T>): Promise<T> {
+  const existing = inFlightRequests.get(key)
+  if (existing !== undefined) {
+    return existing as Promise<T>
+  }
+  const pending = issue()
+  const stored = pending as Promise<object>
+  inFlightRequests.set(key, stored)
+  const cleanup = (): void => {
+    if (inFlightRequests.get(key) === stored) {
+      inFlightRequests.delete(key)
+    }
+  }
+  pending.then(cleanup, cleanup)
+  return pending
+}
+
 export let userCookieString: string = ''
 
 let userCookies: rcp.RequestCookies = {}
@@ -181,7 +203,8 @@ export default class request<T> {
   private fromCacheOnly = false
 
   /**
-   * 从本地文件中提前获取响应。仅支持json。不会立即查找缓存，而是直到get()或post()被调用时再查找
+   * 从本地文件中提前获取响应。仅支持json。不会立即查找缓存，而是直到get()或post()被调用时再查找。
+   * 使用本方法的请求视为可缓存的读请求：其网络调用会自动在途去重。
    * @param callback 回调，data与从get()或post()方法获得的响应类型一致
    * @param updateCacheOnly 仅更新缓存， callback不会被调用
    * @param fromCacheOnly 仅从本地缓存中获取，仍需调用get()或post()来开始请求缓存，但将返回Promise.reject(fromCacheError)
@@ -191,6 +214,10 @@ export default class request<T> {
     this.cacheCallback = callback
     this.fromCacheOnly = fromCacheOnly
     return this
+  }
+
+  private dedupKey(pathAndPayload: string): string {
+    return `${this.base}${pathAndPayload}|${userCookieString}|${userAppToken ?? ''}`
   }
 
   private wrapper(request: (session: IRcpSession) => Promise<RcpResponse>) {
@@ -329,7 +356,8 @@ export default class request<T> {
     if (this.fromCacheOnly) {
       return rejectByCache()
     }
-    return this.wrapper((session: IRcpSession) => session.get(path))
+    const execute = (): Promise<T> => this.wrapper((session: IRcpSession) => session.get(path))
+    return this.cacheCallback ? joinInFlight(this.dedupKey(path), execute) : execute()
   }
 
   private isFormData: boolean = false
@@ -366,15 +394,15 @@ export default class request<T> {
       payload = new url.URLParams(content as Record<string, string>)?.toString()
     }
     const reqPath = this.addParams(this.path)
+    let payloadString: string
+    if (typeof content == 'string') {
+      payloadString = content
+    } else if (this.isFormData) {
+      payloadString = JSON.stringify(payload)
+    } else {
+      payloadString = new url.URLParams(content as Record<string, string>).toString()
+    }
     if (this.cacheCallback) {
-      let payloadString: string
-      if (typeof content == 'string') {
-        payloadString = content
-      } else if (this.isFormData) {
-        payloadString = JSON.stringify(payload)
-      } else {
-        payloadString = new url.URLParams(content as Record<string, string>).toString()
-      }
       this.cacheKey = this.base + reqPath + payloadString
       if (!this.putCacheOnly) {
         getCache(this.cacheKey).then(cached => this.cacheCallback && cached && this.cacheCallback(cached as T))
@@ -383,7 +411,8 @@ export default class request<T> {
     if (this.fromCacheOnly) {
       return rejectByCache()
     }
-    return this.wrapper((session: IRcpSession) => session.post(reqPath, payload))
+    const execute = (): Promise<T> => this.wrapper((session: IRcpSession) => session.post(reqPath, payload))
+    return this.cacheCallback ? joinInFlight(this.dedupKey(reqPath + payloadString), execute) : execute()
   }
 }
 

@@ -23,6 +23,8 @@ import { LoadingIcon } from '../../common/component/LoadingIcon'
 import { PropKey } from '../../common/Constants'
 import { BLOCK_USER_LIST_STATE, BlockUser, UnblockUser } from '../../common/dataStore/BlockUser'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
+import { PostColorMode } from '../../config/v1/default'
+import { contentTextColor } from '../../common/component/preference/TextColorPref'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { openS1LinkLike } from '../../ArkUIX/Utils/WantUitl'
 import { PreferenceState } from '../NavProvider/NavigationPage'
@@ -332,52 +334,40 @@ export struct UserSpace {
                           },
                           getAttachInfo: (aid: string) => undefined,
                           lazyLoadImage: true,
-                          adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust
+                          adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust,
+                          contentTextColor: contentTextColor(this.appState, this.appTheme.isDark),
+                          ignorePostColor: this.appState.postColorMode == PostColorMode.ignorePostColor
                         })
                       })
                     }.padding(4)
                   }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
                 }
                 Row() {
-                  GridRow({ gutter: 1, columns: 12 }) {
+                  Column() {
                     ForEach(this.userSpace.dates, (item: dateInfoVM) => {
-                      GridCol({
-                        span: {
-                          xs: 12,
-                          md: 6,
-                        }
-                      }) {
-                        Column({ space: 4 }) {
-                          Text(item.title)
-                            .fontColor(this.appTheme.fontEmphasize)
-                            .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
-                          Text(item.date).fontSize(FontSizeEnum[this.appState.fontSize].vp16)
-                        }.padding(4).width('100%').alignItems(HorizontalAlign.Start)
-                      }
+                      Column({ space: 4 }) {
+                        Text(item.title)
+                          .fontColor(this.appTheme.fontEmphasize)
+                          .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
+                        Text(item.date).fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                      }.padding(4).width('100%').alignItems(HorizontalAlign.Start)
                     })
-                  }
-                }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
-                .transition(TransitionEffect.translate({ y: -35 }).animation(SpringCurve))
+                  }.flexGrow(1).flexBasis(1).alignItems(HorizontalAlign.Start)
 
-                Row() {
-                  GridRow({ gutter: 1, columns: 12 }) {
+                  Column() {
                     ForEach(this.userSpace.extcredits, (item: ExtCreditVM) => {
-                      GridCol({
-                        span: {
-                          xs: 12,
-                          md: 6,
-                        }
-                      }) {
-                        Column({ space: 4 }) {
-                          Text(item.title)
-                            .fontColor(this.appTheme.fontEmphasize)
-                            .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
-                          Text(item.count + ' ' + item.unit).fontSize(FontSizeEnum[this.appState.fontSize].vp16)
-                        }.padding(4).width('100%').alignItems(HorizontalAlign.Start)
-                      }
+                      Column({ space: 4 }) {
+                        Text(item.title)
+                          .fontColor(this.appTheme.fontEmphasize)
+                          .fontSize(FontSizeEnum[this.appState.fontSize].vp14)
+                        Text(item.count + ' ' + item.unit).fontSize(FontSizeEnum[this.appState.fontSize].vp16)
+                      }.padding(4).width('100%').alignItems(HorizontalAlign.End)
                     })
-                  }
-                }.attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
+                  }.flexGrow(1).flexBasis(1).alignItems(HorizontalAlign.End)
+                }
+                .justifyContent(FlexAlign.SpaceBetween)
+                .alignItems(VerticalAlign.Top)
+                .attributeModifier(new RoundPanel(this.appTheme.backgroundPrimary))
                 .transition(TransitionEffect.translate({ y: -45 }).animation(SpringCurve))
               }.transition(TransitionEffect.OPACITY.animation({ duration: AniSpeed.ms300 }))
             } else {
