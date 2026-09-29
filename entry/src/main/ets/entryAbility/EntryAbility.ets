@@ -19,7 +19,9 @@ import { PlatformBridge } from '../ArkUIX/BridgeFunction';
 import bridge from '@arkui-x.bridge';
 import { loadUserTags } from '../common/dataStore/UserTag';
 import { initProcessTextActions } from '../ArkUIX/Utils/ProcessTextActions';
-import { flushPostLocationData, loadPostLocationData } from '../common/dataStore/PostLocationData';
+import { loadPostLocationData } from '../common/dataStore/PostLocationData';
+import { loadImageSizeData } from '../common/dataStore/ImageSizeData';
+import { flushAllPersistMaps } from '../common/dataStore/PersistMap';
 import { ShowSystemBars, HideSystemBars } from '../ArkUIX/Utils/SetStatusBarColor';
 
 export default class EntryAbility extends UIAbility {
@@ -34,6 +36,7 @@ export default class EntryAbility extends UIAbility {
     initJsonStorage(this.context.filesDir)
     loadUserTags()
     loadPostLocationData()
+    loadImageSizeData()
     AppStorage.setOrCreate(PropKey.currentColorMode, this.context.config.colorMode)
     if (want.uri) {
       this.wantWithUri(want.uri)
@@ -119,7 +122,7 @@ export default class EntryAbility extends UIAbility {
 
   onBackground(): void {
     saveAvatarCacheState()
-    flushPostLocationData()
+    flushAllPersistMaps()
   }
 
   onForeground(): void {
