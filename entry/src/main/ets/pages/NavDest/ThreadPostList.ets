@@ -17,7 +17,7 @@ import { setLongScreenshotThreadInfo } from '../../common/LongScreenshotInfo'
 import { PageNameEnum } from '../PageNameEnum'
 import { AppThemeColor } from '../../common/theme/basic/basic'
 import { ImageViewer, ImageViewerParam, requestImageViewerExit } from '../../common/component/ImageViewer'
-import { openOrJumpTo } from '../SingletonPage'
+import { openOrJumpTo, pushPage } from '../SingletonPage'
 import { PageLoadingSpot, SwipePageLoadingIcon, SwipePageViewer } from '../../common/component/SwipePageViewer'
 import { Event } from '../../common/Events'
 import { PageSlider } from '../../common/component/PageSlider'
@@ -47,15 +47,17 @@ import {
   WriteReplyPopData
 } from './WriteReply'
 import {
+  groupPostNodes,
   parseXML,
   PostContentParser,
+  PostRenderItem,
   ThreadPostUINodeRender,
   UIRootNode
 } from '../../common/component/ThreadPostContent'
 import { BLOCK_USER_LIST_STATE, BlockUser, UnblockUser } from '../../common/dataStore/BlockUser'
 import { ThreadDataApp } from '../../api/model/app/thread'
 import { FontSizeEnum } from '../../common/fontSize/FontSizeEnum'
-import { HiddenPostDisplay, PostColorMode } from '../../config/v1/default'
+import { HiddenPostDisplay, PostColorMode, WaterfallColumnCount } from '../../config/v1/default'
 import { contentTextColor } from '../../common/component/preference/TextColorPref'
 import { PreferenceManager } from '../../config/UserConfig'
 import { LengthUnit } from '@kit.ArkUI'
@@ -102,6 +104,13 @@ export interface LongScreenshotPollForShot {
   pollInfo: PollInfoVM
 }
 
+// 打开帖子内容的动机。仅用于"帖子列表打开帖子内容"这类入口的页面栈去重，
+// 带楼层目标的跳转（引用链接、跨帖链接、@某人、提醒跳楼等）不传动机，永远新开页
+export enum ThreadOpenMotive {
+  Content = 'content',
+  LastPage = 'lastPage'
+}
+
 export interface ThreadPostParam {
   tid: string // 仅tid是打开本页面的必须参数
   fid?: string
@@ -112,6 +121,8 @@ export interface ThreadPostParam {
   replies?: string
   jumpToPid?: string
   jumpToPidWithHighlight?: boolean
+  openMotive?: ThreadOpenMotive
+  pageInstanceId?: number
 }
 
 interface LongScreenshotOptionButtonParam {
@@ -125,12 +136,14 @@ const PostContentVerticalPadding = 12
 const PostContentHorizontalPadding = 16
 export const POST_PER_PAGE = 40
 
+let threadPostPageInstanceSeq = 0
+
 function genThreadPostViewKey(pageParam: ThreadPostParam) {
-  return `${pageParam.tid},${pageParam.jumpToPid},${pageParam.authorid}`
+  return `${pageParam.tid},${pageParam.openMotive}`
 }
 
 function openImgViewerEventName(pageParam: ThreadPostParam) {
-  return Event.OpenImageViewer + genThreadPostViewKey(pageParam)
+  return Event.OpenImageViewer + String(pageParam.pageInstanceId)
 }
 
 function attachmentImageUrl(attach: Attachment): string {
@@ -615,6 +628,7 @@ export struct ThreadPostList {
         }
       }
       this.pageParam = pageParam
+      pageParam.pageInstanceId = ++threadPostPageInstanceSeq
       this.updateEntryUnread()
       Recommend.onThreadPostShown(this.pageParam.tid)
       if (this.pageParam.jumpToPid && this.pageParam.jumpToPid != '0') {
@@ -785,7 +799,7 @@ struct SinglePostPage {
     visiblepoll: SpecialPollResultVisible.VISIBLE,
     allowvote: SpecialPollAllowVote.ALLOW
   }
-  @Provide postRatingInfo: Map<string, ThreadRatingInfo | undefined> = new Map
+  @State ratingPids: Set<string> = new Set
   @State postAttachment: Map<string, Record<string, Attachment>> = new Map
   consumedAttachmentAid: Set<string> = new Set
   @Consume contentVisible: boolean
@@ -1054,9 +1068,7 @@ struct SinglePostPage {
     setLongScreenshotThreadInfo(this.pageParam.tid,
       !isNaN(threadDateline) && threadDateline > 0 ? threadDateline * 1000 : 0,
       !isNaN(threadReplies) && threadReplies > 0 ? threadReplies : 0)
-    const postRating = new Map<string, ThreadRatingInfo | undefined>()
-    Object.keys(v.Variables.comments).forEach(pid => postRating.set(pid, undefined))
-    this.postRatingInfo = postRating
+    this.ratingPids = new Set(Object.keys(v.Variables.comments))
     if (this.pageToLoad == 1) {
       if (v.Variables.special_poll) {
         const pollData = v.Variables.special_poll
@@ -1440,13 +1452,8 @@ struct SinglePostPage {
 
   async makePostForShot(post: PostViewModel, compIndex: number): Promise<LongScreenshotPost> {
     let ratingInfo: ThreadRatingInfo | undefined = undefined
-    if (this.postRatingInfo.has(post.pid)) {
-      ratingInfo = this.postRatingInfo.get(post.pid)
-      if (ratingInfo === undefined) {
-        const ratingInfoData = await requestRating(post.pid, this.pageParam.tid)
-        this.postRatingInfo.set(post.pid, ratingInfoData)
-        ratingInfo = ratingInfoData
-      }
+    if (this.ratingPids.has(post.pid)) {
+      ratingInfo = await requestRating(post.pid, this.pageParam.tid)
     }
     return {
       post: {
@@ -1484,9 +1491,11 @@ struct SinglePostPage {
 
   @LocalBuilder
   buildPostContent(nodes: UIRootNode[], pid: string) {
-    ForEach(nodes, (uiRoot: UIRootNode) => {
+    ForEach(groupPostNodes(nodes, WaterfallColumnCount[this.appState.postImageWaterfall],
+      this.appState.postImageWaterfallMinCount), (renderItem: PostRenderItem) => {
       ThreadPostUINodeRender({
-        uiRoot: uiRoot,
+        uiRoot: renderItem.root!,
+        imageRun: renderItem.images,
         appTheme: this.appTheme,
         fontSize: this.appState.fontSize,
         lineSpace: this.appState.contentLineSpace,
@@ -1501,14 +1510,16 @@ struct SinglePostPage {
         },
         getAttachInfo: (aid: string): Attachment | undefined => this.getAttachInfo(pid, aid),
         lazyLoadImage: true,
+        imageWaterfallColumns: WaterfallColumnCount[this.appState.postImageWaterfall],
         adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust,
         contentTextColor: contentTextColor(this.appState, this.appTheme.isDark),
         ignorePostColor: this.appState.postColorMode == PostColorMode.ignorePostColor
       })
     },
-      (uiRoot: UIRootNode, index: number) => index.toString() + this.appState.fontSize +
+      (renderItem: PostRenderItem, index: number) => index.toString() + this.appState.fontSize +
         this.appState.fontSizeOverride + this.appState.darkModeContentColorAdjust + this.appTheme.isDark +
-        this.appState.textColorLight + this.appState.textColorDark + this.appState.postColorMode)
+        this.appState.textColorLight + this.appState.textColorDark + this.appState.postColorMode +
+        this.appState.postImageWaterfall + this.appState.postImageWaterfallMinCount)
   }
 
   @LocalBuilder
@@ -1742,7 +1753,7 @@ struct SinglePostPage {
           }, (attach: Attachment) => attach.aid)
         }
 
-        if (this.postRatingInfo.has(post.pid)) {
+        if (this.ratingPids.has(post.pid)) {
           Divider().margin({ top: 20 })
           PostRating({
             pid: post.pid,
@@ -1940,13 +1951,14 @@ export function RegisterBuilder() {
 }
 
 export function openThreadPost(param: ThreadPostParam, pathStack: NavPathStack,
-  tidAsKey: boolean = false, animated: boolean = true) {
+  motive?: ThreadOpenMotive, animated: boolean = true) {
+  if (motive === undefined) {
+    pushPage(pathStack, PageNameEnum.ThreadPostList, param, animated)
+    return
+  }
+  param.openMotive = motive
   openOrJumpTo(pathStack, PageNameEnum.ThreadPostList, param, animated, (u: object) => {
-    if (tidAsKey) {
-      return (u as ThreadPostParam).tid == param.tid
-    } else {
-      return genThreadPostViewKey(u as ThreadPostParam) == genThreadPostViewKey(param)
-    }
+    return genThreadPostViewKey(u as ThreadPostParam) == genThreadPostViewKey(param)
   })
 }
 

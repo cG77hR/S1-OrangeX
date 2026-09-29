@@ -28,6 +28,7 @@ export struct ImageContainer {
   imgSize?: RectSize
   retry: number = 0
   @Prop @Watch('resize') constrainSize: RectSize | undefined = undefined
+  @Prop @Watch('resize') fitWidth: number | undefined = undefined
   lastConstrainSizeWidth: number | undefined = undefined
   src: string = ''
   usedByImageViewer: boolean = false
@@ -57,7 +58,11 @@ export struct ImageContainer {
       return
     }
     let resizeTo: RectSize
-    if (this.constrainSize) { // 限制高度的情况下contain fit
+    const limitWidth = this.fitWidth
+    if (limitWidth !== undefined && limitWidth > 0) { // 限定宽度的情况下按宽度铺满，如瀑布流单元
+      resizeTo = resizeImgFitWidth(this.imgSize, vp2px(limitWidth))
+      this.afterResize(resizeTo)
+    } else if (this.constrainSize) { // 限制高度的情况下contain fit
       if (this.lastConstrainSizeWidth == this.constrainSize.w) {
         return
       }
@@ -72,6 +77,7 @@ export struct ImageContainer {
       this.afterResize(resizeTo)
     } else { // 其他情况占满横边适应
       resizeTo = resizeImgFitWidth(this.imgSize, Math.min(vp2px(this.imgSize.w), componentWidth))
+      this.afterResize(resizeTo)
     }
     this.imgHeight = px2vp(resizeTo.h)
     this.imgWidth = px2vp(resizeTo.w)

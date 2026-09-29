@@ -19,8 +19,10 @@ import { openOrJumpTo } from '../SingletonPage'
 import { PageNameEnum } from '../PageNameEnum'
 import { defaultApplicationConfig, FollowHandDialogDesc, FontSizeIndex } from '../../config/v1/default'
 import { HiddenPostDisplayModeDesc, HiddenPostPref } from '../../common/component/preference/HiddenPostPref'
+import { PostImageWaterfallPref } from '../../common/component/preference/PostImageWaterfallPref'
 import { FollowHandDialogPref } from '../../common/component/preference/FollowHandDialogPref'
 import { openSplitModeShortcut } from './SplitModeShortcut'
+import { splitDisplayActive } from '../../common/SplitModeHelper'
 import { PropKey } from '../../common/Constants'
 import {
   ApiCacheState,
@@ -94,6 +96,8 @@ export struct PreferencePage {
   @State customLoadingIconRotate: boolean = true
   @State customLoadingIconScaleTop: number = defaultApplicationConfig.custom_loading_icon_scale_top
   @State customLoadingIconScaleOther: number = defaultApplicationConfig.custom_loading_icon_scale_other
+  @State postImageWaterfallMinCount: number = defaultApplicationConfig.post_image_waterfall_min_count
+  @StorageProp(PropKey.windowIsLandscape) isLandscape: boolean = false
 
   aboutToAppear(): void {
     this.imageCacheUsage = ImageKnife.getInstance().getFileCache()?.currentMemory ?? 0
@@ -125,8 +129,13 @@ export struct PreferencePage {
       this.appState.textColorLight = conf.text_color_light
       this.appState.textColorDark = conf.text_color_dark
       this.appState.postColorMode = conf.post_color_mode
+      this.appState.postImageWaterfall = this.isLandscape
+        ? conf.post_image_waterfall_landscape : conf.post_image_waterfall_portrait
+      this.postImageWaterfallMinCount = conf.post_image_waterfall_min_count
+      this.appState.postImageWaterfallMinCount = conf.post_image_waterfall_min_count
       this.appState.hiddenPostDisplay = conf.hidden_post_display
-      this.appState.splitMode = conf.split_mode
+      this.appState.splitModePortrait = conf.split_mode_portrait
+      this.appState.splitModeLandscape = conf.split_mode_landscape
       this.appState.followHandDialog = conf.follow_hand_dialog
       this.appState.threadItemGap = conf.thread_item_gap
       this.appState.contentLineSpace = conf.content_line_space
@@ -455,10 +464,28 @@ export struct PreferencePage {
                 subtitle: '系统默认的文字颜色带有一定透明度，可以在此处调整、加深文字颜色，获得更舒服的阅读体验'
               }) {
                 TextColorPanel()
+
+                Row() {
+                  Column({ space: SettingColumnSpace }) {
+                    this.TextPrimary('深色模式下，调整带颜色帖文的色彩')
+                    Text('来获得跟浅色模式下接近的阅读体验，例如白底白字变为黑底黑字。仅对没有设置背景颜色的文字有效')
+                      .attributeModifier(this.textSecondary)
+                  }.SettingColumn()
+
+                  Toggle({ type: ToggleType.Switch, isOn: this.appState.darkModeContentColorAdjust }).onChange(isOn => {
+                    PreferenceManager.modify(conf => {
+                      conf.dark_mode_content_color_adjust = isOn
+                      this.appState.darkModeContentColorAdjust = isOn
+                    })
+                  })
+                }.attributeModifier(this.settingRow)
+
+                SettingDivider()
               }
 
               FoldMenu({
-                title: '字体大小'
+                title: '字体大小',
+                subtitle: '阅读时的字体尺寸、是否跟随贴文样式进行字体缩放'
               }) {
                 Column() {
                   Text(`当前：${this.appState.fontSize}单位`).attributeModifier(this.textSecondary)
@@ -477,65 +504,120 @@ export struct PreferencePage {
                     }
                   })
                 }.alignItems(HorizontalAlign.Start)
+
+                Row() {
+                  Column({ space: SettingColumnSpace }) {
+                    this.TextPrimary('当帖文指定了字体大小')
+                    ContentFontSizeOverridePref()
+                    Text(FontOverrideModeDesc[this.appState.fontSizeOverride]).attributeModifier(this.textSecondary)
+                  }.SettingColumn()
+
+                }.attributeModifier(this.settingRow)
+
+
+                SettingDivider()
+              }
+
+              FoldMenu({
+                title: '宽屏体验',
+                subtitle: '双栏模式、跟手弹窗'
+              }) {
+                Row() {
+                  Column({ space: SettingColumnSpace }) {
+                    this.TextPrimary('使用双栏界面')
+                    Row() {
+                      Row({ space: SettingColumnSpace }) {
+                        this.TextPrimary('竖屏时')
+                        Toggle({ type: ToggleType.Switch, isOn: this.appState.splitModePortrait }).onChange(isOn => {
+                          PreferenceManager.modify(conf => {
+                            conf.split_mode_portrait = isOn
+                            this.appState.splitModePortrait = isOn
+                            this.appState.splitModeTempOff = false
+                          })
+                          if (isOn && splitDisplayActive(this.appState.splitModePortrait,
+                            this.appState.splitModeLandscape, this.appState.splitModeTempOff)) {
+                            openSplitModeShortcut(this.pathStack)
+                          }
+                        })
+                      }.layoutWeight(1)
+                      .justifyContent(FlexAlign.Center)
+
+                      Row({ space: SettingColumnSpace }) {
+                        this.TextPrimary('横屏时')
+                        Toggle({ type: ToggleType.Switch, isOn: this.appState.splitModeLandscape }).onChange(isOn => {
+                          PreferenceManager.modify(conf => {
+                            conf.split_mode_landscape = isOn
+                            this.appState.splitModeLandscape = isOn
+                            this.appState.splitModeTempOff = false
+                          })
+                          if (isOn && splitDisplayActive(this.appState.splitModePortrait,
+                            this.appState.splitModeLandscape, this.appState.splitModeTempOff)) {
+                            openSplitModeShortcut(this.pathStack)
+                          }
+                        })
+                      }.layoutWeight(1)
+                      .justifyContent(FlexAlign.Center)
+                    }.width('100%')
+
+                    Text('开启后，窗口宽度足够宽时将使用左右分栏界面，可分别设置竖屏与横屏下的行为。中心分界线可拖动，以调整界面宽度')
+                      .attributeModifier(this.textSecondary)
+                  }.SettingColumn()
+                }.attributeModifier(this.settingRow)
+
+                Row() {
+                  Column({ space: SettingColumnSpace }) {
+                    this.TextPrimary('使用跟手弹窗')
+                    FollowHandDialogPref()
+                    Text(FollowHandDialogDesc[this.appState.followHandDialog]).attributeModifier(this.textSecondary)
+                  }.SettingColumn()
+                }.attributeModifier(this.settingRow)
+
+                SettingDivider()
+              }
+
+              FoldMenu({
+                title: '瀑布流看图',
+                subtitle: '帖子内图片以多列的瀑布流呈现'
+              }) {
+                Row() {
+                  Column({ space: SettingColumnSpace }) {
+                    this.TextPrimary('图片以瀑布流展示')
+                    PostImageWaterfallPref()
+                  }.SettingColumn()
+                }.attributeModifier(this.settingRow)
+
+                Row() {
+                  Column({ space: SettingColumnSpace }) {
+                    this.TextPrimary('使用瀑布流的最小图片数量')
+                    Text(`小于这个数量的，不启用瀑布流。当前：${this.postImageWaterfallMinCount} 张`)
+                      .attributeModifier(this.textSecondary)
+                  }.SettingColumn()
+                }.attributeModifier(this.settingRow)
+
+                SliderReset({
+                  value: this.postImageWaterfallMinCount,
+                  min: 1,
+                  max: 6,
+                  step: 1,
+                  resetValue: defaultApplicationConfig.post_image_waterfall_min_count,
+                  onChange: v => {
+                    const count = Math.round(v)
+                    PreferenceManager.modify(conf => {
+                      conf.post_image_waterfall_min_count = count
+                    })
+                    this.postImageWaterfallMinCount = count
+                    this.appState.postImageWaterfallMinCount = count
+                  }
+                })
+
+                SettingDivider()
               }
 
               Row() {
                 Column({ space: SettingColumnSpace }) {
-                  this.TextPrimary('当帖文指定了字体大小')
-                  ContentFontSizeOverridePref()
-                  Text(FontOverrideModeDesc[this.appState.fontSizeOverride]).attributeModifier(this.textSecondary)
-                }.SettingColumn()
-
-              }.attributeModifier(this.settingRow)
-
-              Row() {
-                Column({ space: SettingColumnSpace }) {
-                  this.TextPrimary('深色模式下，调整带颜色帖文的色彩')
-                  Text('来获得跟浅色模式下接近的阅读体验，例如白底白字变为黑底黑字。仅对没有设置背景颜色的文字有效')
+                  this.TextPrimary('帖子可长按复制')
+                  Text('调整在帖子正文上长按的行为。关闭后，仍然可通过楼层菜单的“自由复制”功能，进入专用复制页面来选取、复制')
                     .attributeModifier(this.textSecondary)
-                }.SettingColumn()
-
-                Toggle({ type: ToggleType.Switch, isOn: this.appState.darkModeContentColorAdjust }).onChange(isOn => {
-                  PreferenceManager.modify(conf => {
-                    conf.dark_mode_content_color_adjust = isOn
-                    this.appState.darkModeContentColorAdjust = isOn
-                  })
-                })
-              }.attributeModifier(this.settingRow)
-
-              SettingDivider()
-
-              Row() {
-                Column({ space: SettingColumnSpace }) {
-                  this.TextPrimary('宽屏时使用双栏界面')
-                  Text('开启后，在宽屏设备上浏览时，将使用左右两侧分栏显示的界面。中心分界线可拖动，以调整界面宽度')
-                    .attributeModifier(this.textSecondary)
-                }.SettingColumn()
-
-                Toggle({ type: ToggleType.Switch, isOn: this.appState.splitMode }).onChange(isOn => {
-                  PreferenceManager.modify(conf => {
-                    conf.split_mode = isOn
-                    this.appState.splitMode = isOn
-                    if (isOn) {
-                      openSplitModeShortcut(this.pathStack)
-                    }
-                  })
-                })
-              }.attributeModifier(this.settingRow)
-
-              Row() {
-                Column({ space: SettingColumnSpace }) {
-                  this.TextPrimary('使用跟手弹窗')
-                  FollowHandDialogPref()
-                  Text(FollowHandDialogDesc[this.appState.followHandDialog]).attributeModifier(this.textSecondary)
-                }.SettingColumn()
-              }.attributeModifier(this.settingRow)
-
-              SettingDivider()
-
-              Row() {
-                Column({ space: SettingColumnSpace }) {
-                  this.TextPrimary('帖子可复制')
                 }.SettingColumn()
 
                 Toggle({ type: ToggleType.Switch, isOn: this.appState.textCopyable }).onChange(isOn => {

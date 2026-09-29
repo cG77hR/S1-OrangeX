@@ -334,6 +334,7 @@ export struct UserSpace {
                           },
                           getAttachInfo: (aid: string) => undefined,
                           lazyLoadImage: true,
+                          imageWaterfallColumns: 0,
                           adjustColorForDarkMode: this.appTheme.isDark && this.appState.darkModeContentColorAdjust,
                           contentTextColor: contentTextColor(this.appState, this.appTheme.isDark),
                           ignorePostColor: this.appState.postColorMode == PostColorMode.ignorePostColor

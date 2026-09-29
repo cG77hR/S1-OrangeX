@@ -89,6 +89,22 @@ export enum PostColorMode {
   ignorePostColor = 1
 }
 
+/**
+ * 帖内图片以瀑布流呈现的列数：不使用 / 2 列 / 3 列 / 4 列
+ */
+export enum PostImageWaterfall {
+  off = 0,
+  twoColumns = 1,
+  threeColumns = 2,
+  fourColumns = 3
+}
+
+export const WaterfallColumnCount: number[] = []
+WaterfallColumnCount[PostImageWaterfall.off] = 0
+WaterfallColumnCount[PostImageWaterfall.twoColumns] = 2
+WaterfallColumnCount[PostImageWaterfall.threeColumns] = 3
+WaterfallColumnCount[PostImageWaterfall.fourColumns] = 4
+
 export const DEFAULT_TEXT_COLOR_LIGHT = '#CE000000'
 export const DEFAULT_TEXT_COLOR_DARK = '#BDFDFDFD'
 
@@ -114,7 +130,7 @@ export const RecommendPrefDesc: string[] = [
 ]
 
 export class ApplicationConfig {
-  version = '3'
+  version = '4'
   account_list: Record<string, UserAccount> = {}
   user_name: string = ''
   user_uid: string = ''
@@ -134,9 +150,13 @@ export class ApplicationConfig {
   text_color_light: string = DEFAULT_TEXT_COLOR_LIGHT
   text_color_dark: string = DEFAULT_TEXT_COLOR_DARK
   post_color_mode: PostColorMode = PostColorMode.showPostColor
+  post_image_waterfall_portrait: PostImageWaterfall = PostImageWaterfall.off
+  post_image_waterfall_landscape: PostImageWaterfall = PostImageWaterfall.off
+  post_image_waterfall_min_count: number = 2
   hidden_post_display: HiddenPostDisplay = HiddenPostDisplay.hidden
   image_upload_service: number = 0
-  split_mode: boolean = true
+  split_mode_portrait: boolean = true
+  split_mode_landscape: boolean = true
   follow_hand_dialog: FollowHandDialogMode = FollowHandDialogMode.splitOnly
   first_run: boolean = true
   post_signature: boolean = false
