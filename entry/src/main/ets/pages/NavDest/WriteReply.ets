@@ -1289,6 +1289,7 @@ class NewPost implements WriteHandler {
     }
     try {
       const resp = await new request<wrapper<Account>>(URL.REPLY_ACTION)
+        .ensureJSON()
         .formHash()
         .post(data)
       if (resp.Message.messageval.includes('succeed')) {
