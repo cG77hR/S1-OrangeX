@@ -4,7 +4,7 @@ import { URL } from './base';
 import { url } from '@kit.ArkTS';
 import Account, { Notice } from './model/account';
 import wrapper, { wrapperApp } from './wrapper';
-import { getCache, putCache } from '../common/dataStore/ApiCacheData';
+import { getCache, putCache, removeCache } from '../common/dataStore/ApiCacheData';
 import { IRcpSession, Rcp, RcpResponse } from '../ArkUIX/Rcp/Rcp';
 import { PreferenceManager } from '../config/UserConfig';
 import { accountInvalid } from '../common/account/AccountManager';
@@ -216,6 +216,28 @@ export default class request<T> {
     return this
   }
 
+  private shouldClearCacheOn503 = false
+
+  /**
+   * 线上请求返回 HTTP 503 时删除本次请求对应的本地缓存，避免之后继续使用失效的旧数据
+   */
+  clearCacheOn503() {
+    this.shouldClearCacheOn503 = true
+    return this
+  }
+
+  private executeWithCacheClear(execute: () => Promise<T>): Promise<T> {
+    if (!this.shouldClearCacheOn503) {
+      return execute()
+    }
+    return execute().catch((err: RequestError): Promise<T> => {
+      if (err.type == 'Response' && err.data.statusCode == 503 && this.cacheKey) {
+        removeCache(this.cacheKey)
+      }
+      return Promise.reject(err)
+    })
+  }
+
   private dedupKey(pathAndPayload: string): string {
     return `${this.base}${pathAndPayload}|${userCookieString}|${userAppToken ?? ''}`
   }
@@ -358,7 +380,8 @@ export default class request<T> {
     if (this.fromCacheOnly) {
       return rejectByCache()
     }
-    const execute = (): Promise<T> => this.wrapper((session: IRcpSession) => session.get(path))
+    const execute = (): Promise<T> => this.executeWithCacheClear(
+      (): Promise<T> => this.wrapper((session: IRcpSession) => session.get(path)))
     return this.cacheCallback ? joinInFlight(this.dedupKey(path), execute) : execute()
   }
 
@@ -413,7 +436,8 @@ export default class request<T> {
     if (this.fromCacheOnly) {
       return rejectByCache()
     }
-    const execute = (): Promise<T> => this.wrapper((session: IRcpSession) => session.post(reqPath, payload))
+    const execute = (): Promise<T> => this.executeWithCacheClear(
+      (): Promise<T> => this.wrapper((session: IRcpSession) => session.post(reqPath, payload)))
     return this.cacheCallback ? joinInFlight(this.dedupKey(reqPath + payloadString), execute) : execute()
   }
 }

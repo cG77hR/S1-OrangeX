@@ -1,6 +1,13 @@
 import { DomainRegex, URL } from '../../api/base'
 import request, { RequestError } from '../../api/request'
-import { Attachment, Post, PostListV4, SpecialPollAllowVote, SpecialPollResultVisible } from '../../api/model/postList'
+import {
+  Attachment,
+  Post,
+  PostList,
+  PostListV4,
+  SpecialPollAllowVote,
+  SpecialPollResultVisible
+} from '../../api/model/postList'
 import wrapper, { wrapperApp } from '../../api/wrapper'
 import { OuterScroller } from '../../common/component/OuterScroller'
 import { PullToRefreshStage } from '../../common/component/PullToRefresh'
@@ -733,6 +740,7 @@ struct SinglePostPage {
   @StorageProp(SafeArea.bottom) @Watch('bottomRectHeightChanged') bottomRectHeight: number = 0
   @StorageProp(BLOCK_USER_LIST_STATE) blockList: Set<string> = new Set
   pageToLoad: number = 1
+  transitionInstanceId: number = ++threadPostPageInstanceSeq
   imgUrl: string[] = []
   @State inlineAttachmentAid: Set<string> = new Set // 已插入正文的图片附件，帖尾不再重复渲染
 
@@ -775,6 +783,7 @@ struct SinglePostPage {
   scroller: Scroller = new Scroller()
   @Consume refreshStage: PullToRefreshStage
   @State postFloorNumber: Map<number, string> = new Map // 列表组件索引 | 置顶楼层索引(PinnedPostFloorIndex) -> 显示的楼层号，用于楼层号角标
+  floorNumberByPid: Map<string, string> = new Map // pid -> 楼层号，用于跨接口按 pid 对齐楼层号
   @State indexerFloorNum: string[] = [] // 列表组件索引 -> pid，用于indexer显示
   pidMap: string[] = [] // 列表组件索引 -> pid，用于记录浏览历史
   indexerFloorCompIndex: number[] = [] // indexer的索引 -> 列表组件索引， 用于快速跳转
@@ -887,7 +896,7 @@ struct SinglePostPage {
   }
 
   generateUniquePageKey() {
-    return `${this.pageToLoad},${this.dataControlCounter},${this.pageParam.jumpToPid},${this.pageParam.authorid}`
+    return `${this.transitionInstanceId},${this.pageToLoad},${this.dataControlCounter},${this.pageParam.jumpToPid},${this.pageParam.authorid}`
   }
 
   generateAvatarTransKey(compIndex: number) {
@@ -1008,6 +1017,7 @@ struct SinglePostPage {
 
       this.indexerFloorNum = []
       this.postFloorNumber.clear()
+      this.floorNumberByPid.clear()
 
       rawPostList.forEach((p, i) => {
         if (p.attachments) {
@@ -1021,6 +1031,7 @@ struct SinglePostPage {
         }
 
         this.postFloorNumber.set(i, p.number || '')
+        this.floorNumberByPid.set(p.pid, p.number || '')
         const floorNum = parseInt(p.number || '')
         if (!isNaN(floorNum)) {
           if (floorNum < pageFloorStart + 10 || floorNum % 2 == 0) {
@@ -1103,6 +1114,7 @@ struct SinglePostPage {
     this.mdRendered.clear()
     this.mdRenderShow.clear()
     parseXML(rawPostList).forEach((root, index) => {
+      this.pidMap[index] = rawPostList[index].pid.toString()
       const post = PostContentParser(root, this.imgUrl)
       const vm: PostViewModel = {
         node: post.node,
@@ -1142,7 +1154,6 @@ struct SinglePostPage {
     this.updatePostDatetime()
     for (let i = 0; i < rawPostList.length; i++) {
       const p = rawPostList[i]
-      this.pidMap[i] = p.pid.toString()
       if (this.jumpToPost == p.pid.toString()) {
         if (this.pageParam.jumpToPidWithHighlight) {
           setTimeout(() => {
@@ -1190,6 +1201,74 @@ struct SinglePostPage {
     }
   }
 
+  // v4 接口遇到被删除或审核中的楼层时会返回 503（仅登录态触发），游客态不受影响，因此先用游客态重试 v4，
+  // 可一并拿到楼层号、评分列表、附件等信息；游客态也失败（如需要登录才能浏览的版块）时再用 v1 补齐楼层号
+  requestFallback(): Promise<void> {
+    return new request<wrapper<PostListV4>>(URL.THREAD_POST_LIST_V4)
+      .param('tid', this.pageParam.tid)
+      .param('page', this.pageToLoad.toString())
+      .param('authorid', this.pageParam.authorid || '')
+      .withoutCookie()
+      .get()
+      .then(async (v): Promise<void> => {
+        if ((v.Variables.postlist ?? []).length == 0) {
+          await this.requestFallbackV1()
+        } else {
+          this.processPostListV4(v)
+        }
+      })
+      .catch((): Promise<void> => this.requestFallbackV1())
+  }
+
+  requestFallbackV1(): Promise<void> {
+    return new request<wrapper<PostList>>(URL.THREAD_POST_LIST)
+      .param('tid', this.pageParam.tid)
+      .param('page', this.pageToLoad.toString())
+      .param('authorid', this.pageParam.authorid || '')
+      .get()
+      .then((v): void => this.processFloorFallback(v))
+      .catch((): void => {
+      })
+  }
+
+  // app 接口可能已先行渲染完成，而列表的 LazyForEach 以正文内容为 key，不会因楼层号、评分等补充数据而重建
+  refreshRenderedPosts() {
+    const renderedCount = this.postDataSource.totalCount()
+    for (let i = 0; i < renderedCount; i++) {
+      this.postDataSource.notifyDataChange(i)
+    }
+  }
+
+  processFloorFallback(v: wrapper<PostList>) {
+    const latestTitle = unescapeAll(v.Variables.thread.subject)
+    if (this.pageParam.subject != latestTitle) {
+      this.pageParam.subject = latestTitle
+    }
+    const rawPostList = v.Variables.postlist
+    if (rawPostList.length == 0) {
+      return
+    }
+    const pageFloorStart = POST_PER_PAGE * (this.pageToLoad - 1)
+    if (pageFloorStart >= 10000) {
+      this.indexerFontSize = 8
+    } else if (pageFloorStart >= 1000) {
+      this.indexerFontSize = 9
+    }
+    this.indexerFloorNum = []
+    rawPostList.forEach((p, i) => {
+      const floor = p.number || ''
+      this.postFloorNumber.set(i, floor)
+      this.floorNumberByPid.set(p.pid, floor)
+      const floorNum = parseInt(floor)
+      if (!isNaN(floorNum)) {
+        if (floorNum < pageFloorStart + 10 || floorNum % 2 == 0) {
+          this.indexerFloorCompIndex[this.indexerFloorNum.length] = i
+          this.indexerFloorNum.push(floorNum.toString())
+        }
+      }
+    })
+  }
+
   requestPostData() {
     const session = this.loadGuard.begin(this.generateDataFetchKey())
     if (session === undefined) {
@@ -1204,12 +1283,19 @@ struct SinglePostPage {
         .param('page', this.pageToLoad.toString())
         .param('authorid', this.pageParam.authorid || '')
         .cache((v): void => this.processPostListV4(v), this.postDataSource.totalCount() > 0)
+        .clearCacheOn503()
         .get())
       .then((v): void => this.processPostListV4(v))
-      .catch((res: RequestError) => {
+      .catch(async (res: RequestError): Promise<void> => {
         if (res.type == 'Response') {
           if (res.data.statusCode == 404) {
             this.threadNotExist = true
+          }
+        }
+        if (!this.threadNotExist) {
+          await this.requestFallback()
+          if (this.floorNumberByPid.size > 0) {
+            this.refreshRenderedPosts()
           }
         }
       })
@@ -1351,6 +1437,13 @@ struct SinglePostPage {
   }
 
   getFloorNumber(compIndex: number) {
+    const pid = this.pidMap[compIndex]
+    if (pid) {
+      const floor = this.floorNumberByPid.get(pid)
+      if (floor) {
+        return floor
+      }
+    }
     return this.postFloorNumber.get(compIndex) ?? ''
   }
 
@@ -1724,7 +1817,15 @@ struct SinglePostPage {
             pollList: this.pollList,
             pollInfo: this.pollInfo,
             tid: this.pageParam.tid,
-            compTransitionId: 'Vote' + this.generateUniquePageKey()
+            compTransitionId: 'Vote' + this.generateUniquePageKey(),
+            onPollRefreshed: (pollInfo: PollInfoVM, pollList: PollOptionVM[]) => {
+              this.pollInfo = pollInfo
+              this.pollList = pollList
+              this.pollForShot = {
+                pollInfo: pollInfo,
+                pollList: pollList
+              }
+            }
           })
         }
 
