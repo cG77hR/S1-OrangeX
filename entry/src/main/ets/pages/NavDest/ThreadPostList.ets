@@ -1209,6 +1209,11 @@ struct SinglePostPage {
       .param('page', this.pageToLoad.toString())
       .param('authorid', this.pageParam.authorid || '')
       .withoutCookie()
+      .cache((v): void => {
+        if ((v.Variables.postlist ?? []).length > 0) {
+          this.processPostListV4(v)
+        }
+      })
       .get()
       .then(async (v): Promise<void> => {
         if ((v.Variables.postlist ?? []).length == 0) {
