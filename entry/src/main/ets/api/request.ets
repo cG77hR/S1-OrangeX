@@ -6,6 +6,7 @@ import Account, { Notice } from './model/account';
 import wrapper, { wrapperApp } from './wrapper';
 import { getCache, putCache, removeCache } from '../common/dataStore/ApiCacheData';
 import { IRcpSession, Rcp, RcpResponse } from '../ArkUIX/Rcp/Rcp';
+import { rcpCookie2string } from '../ArkUIX/Rcp/CookieUtil';
 import { PreferenceManager } from '../config/UserConfig';
 import { accountInvalid } from '../common/account/AccountManager';
 import { promptAction } from '@kit.ArkUI';
@@ -446,13 +447,6 @@ export default class request<T> {
 
 function setUserCookieString(cookie: rcp.RequestCookies) {
   userCookieString = rcpCookie2string(cookie)
-}
-
-export function rcpCookie2string(cookie: rcp.RequestCookies) {
-  return Object.entries(cookie)
-    .filter(v => v[1] !== undefined)
-    .map(v => `${v[0]}=${v[1]}`)
-    .join('; ')
 }
 
 export function clearUserCookie() {

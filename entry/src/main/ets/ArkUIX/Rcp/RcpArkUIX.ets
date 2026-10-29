@@ -2,7 +2,7 @@ import http from '@ohos.net.http';
 import { BusinessError } from '@ohos.base';
 import { FormFieldFileValue, IRcpSession, IRcpSessionFactory, MultipartForm, RcpResponse } from './Rcp';
 import { rcp } from '@kit.RemoteCommunicationKit';
-import { rcpCookie2string } from '../../api/request';
+import { rcpCookie2string } from './CookieUtil';
 import { stringToArray } from '../../common/TextUtil';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { ShowToast } from '../Utils/ShowToast';
